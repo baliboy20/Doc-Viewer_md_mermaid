@@ -1,10 +1,12 @@
 import 'dart:io';
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/seez_theme.dart';
 import '../theme/app_theme.dart';
+import '../../infrastructure/services/app_logger.dart';
 
 /// Renders Mermaid diagrams using WebView and mermaid.js
 class MermaidRenderer extends StatefulWidget {
@@ -56,7 +58,15 @@ class _MermaidRendererState extends State<MermaidRenderer> {
     final escapedCode = _escapeForJavaScript(widget.diagramCode);
 
     _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (NavigationRequest request) {
+            // Allow all navigation within the WebView for interactive diagrams
+            return NavigationDecision.navigate;
+          },
+        ),
+      );
 
     // Only set background color on non-macOS platforms to avoid opacity error
     if (!Platform.isMacOS) {
@@ -74,6 +84,12 @@ class _MermaidRendererState extends State<MermaidRenderer> {
               _isLoading = false;
             });
           }
+        },
+      )
+      ..addJavaScriptChannel(
+        'ConsoleLog',
+        onMessageReceived: (JavaScriptMessage message) {
+          AppLogger.debug('Mermaid WebView: ${message.message}', tag: 'MermaidRenderer');
         },
       )
       ..loadHtmlString(_buildHtmlContent(
@@ -104,27 +120,27 @@ class _MermaidRendererState extends State<MermaidRenderer> {
 
   String _getBackgroundColor() {
     if (widget.currentTheme == 'seez') {
-      return '#${SeezTheme.parchmentBackground.value.toRadixString(16).substring(2)}';
+      return '#${SeezTheme.parchmentBackground.toARGB32().toRadixString(16).substring(2)}';
     } else if (widget.currentTheme == 'dark') {
-      return '#${AppTheme.darkerBackground.value.toRadixString(16).substring(2)}';
+      return '#${AppTheme.darkerBackground.toARGB32().toRadixString(16).substring(2)}';
     }
-    return '#${AppTheme.lightBackground.value.toRadixString(16).substring(2)}';
+    return '#${AppTheme.lightBackground.toARGB32().toRadixString(16).substring(2)}';
   }
 
   String _getTextColor() {
     if (widget.currentTheme == 'seez') {
-      return '#${SeezTheme.darkBrownText.value.toRadixString(16).substring(2)}';
+      return '#${SeezTheme.darkBrownText.toARGB32().toRadixString(16).substring(2)}';
     } else if (widget.currentTheme == 'dark') {
-      return '#${AppTheme.textOnDark.value.toRadixString(16).substring(2)}';
+      return '#${AppTheme.textOnDark.toARGB32().toRadixString(16).substring(2)}';
     }
-    return '#${AppTheme.textPrimary.value.toRadixString(16).substring(2)}';
+    return '#${AppTheme.textPrimary.toARGB32().toRadixString(16).substring(2)}';
   }
 
   String _getPrimaryColor() {
     if (widget.currentTheme == 'seez') {
-      return '#${SeezTheme.primaryBrown.value.toRadixString(16).substring(2)}';
+      return '#${SeezTheme.primaryBrown.toARGB32().toRadixString(16).substring(2)}';
     }
-    return '#${AppTheme.primaryBlue.value.toRadixString(16).substring(2)}';
+    return '#${AppTheme.primaryBlue.toARGB32().toRadixString(16).substring(2)}';
   }
 
   String _buildHtmlContent(
@@ -150,6 +166,8 @@ class _MermaidRendererState extends State<MermaidRenderer> {
       background-color: $bgColor;
       padding: 20px;
       overflow-x: auto;
+      -webkit-user-select: none;
+      user-select: none;
     }
     #diagram {
       display: flex;
@@ -158,6 +176,20 @@ class _MermaidRendererState extends State<MermaidRenderer> {
       min-height: 200px;
       transform-origin: center top;
       transition: transform 0.3s ease;
+      pointer-events: auto;
+    }
+    #diagram svg {
+      max-width: 100%;
+      height: auto;
+    }
+    /* Enable pointer events for interactive elements */
+    #diagram * {
+      pointer-events: auto;
+    }
+    /* Ensure buttons and interactive elements are clickable */
+    button, select, input, a {
+      pointer-events: auto !important;
+      cursor: pointer;
     }
     .error {
       color: #CF222E;
@@ -176,6 +208,7 @@ class _MermaidRendererState extends State<MermaidRenderer> {
     mermaid.initialize({
       startOnLoad: false,
       theme: '${widget.currentTheme == 'dark' ? 'dark' : 'default'}',
+      securityLevel: 'loose',
       themeVariables: {
         primaryColor: '$primaryColor',
         primaryTextColor: '$textColor',
@@ -196,6 +229,9 @@ class _MermaidRendererState extends State<MermaidRenderer> {
       },
       sequence: {
         useMaxWidth: true
+      },
+      gantt: {
+        useMaxWidth: true
       }
     });
 
@@ -205,11 +241,34 @@ class _MermaidRendererState extends State<MermaidRenderer> {
     async function renderDiagram() {
       try {
         const { svg } = await mermaid.render('mermaidDiagram', diagramCode);
-        document.getElementById('diagram').innerHTML = svg;
+        const diagramContainer = document.getElementById('diagram');
+        diagramContainer.innerHTML = svg;
+
+        // Enable all interactive elements after rendering
+        const svgElement = diagramContainer.querySelector('svg');
+        if (svgElement) {
+          // Ensure SVG and all children can receive events
+          svgElement.style.pointerEvents = 'auto';
+
+          // Find and enable all interactive elements
+          const interactiveElements = svgElement.querySelectorAll('a, button, [onclick], [class*="clickable"]');
+          interactiveElements.forEach(el => {
+            el.style.pointerEvents = 'auto';
+            el.style.cursor = 'pointer';
+          });
+
+          // Log for debugging
+          if (window.ConsoleLog) {
+            window.ConsoleLog.postMessage('Interactive elements found: ' + interactiveElements.length);
+          }
+        }
 
         // Notify Flutter about the height - try multiple times to ensure it gets through
         notifyHeight();
       } catch (error) {
+        if (window.ConsoleLog) {
+          window.ConsoleLog.postMessage('Mermaid rendering error: ' + error.message);
+        }
         console.error('Mermaid rendering error:', error);
         document.getElementById('diagram').innerHTML =
           '<div class="error"><strong>Diagram Rendering Error:</strong><br>' +
@@ -371,7 +430,20 @@ class _MermaidRendererState extends State<MermaidRenderer> {
           height: widget.height ?? _webViewHeight,
           child: Stack(
             children: [
-              WebViewWidget(controller: _controller),
+              WebViewWidget(
+                controller: _controller,
+                gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                  Factory<VerticalDragGestureRecognizer>(
+                    () => VerticalDragGestureRecognizer(),
+                  ),
+                  Factory<TapGestureRecognizer>(
+                    () => TapGestureRecognizer(),
+                  ),
+                  Factory<LongPressGestureRecognizer>(
+                    () => LongPressGestureRecognizer(),
+                  ),
+                },
+              ),
               if (_isLoading)
                 Center(
                   child: CircularProgressIndicator(

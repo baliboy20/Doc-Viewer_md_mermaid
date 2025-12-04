@@ -130,12 +130,14 @@ class MermaidFileViewer extends StatelessWidget {
                 width: 2,
               ),
             ),
+            clipBehavior: Clip.none,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
+              clipBehavior: Clip.antiAlias,
               child: MermaidRenderer(
                 diagramCode: content,
                 currentTheme: currentTheme,
-                height: 600,
+                // Remove fixed height to allow dynamic sizing
               ),
             ),
           ),

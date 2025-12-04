@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../application/bloc/documentation_bloc.dart';
@@ -394,8 +395,26 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ],
           ),
           onTap: () {
-            // Copy path to clipboard
-            // Note: Would need clipboard package for actual implementation
+            _copyPathToClipboard(node.path);
+          },
+        ),
+        PopupMenuItem(
+          child: Row(
+            children: [
+              Icon(
+                CupertinoIcons.square_arrow_right,
+                size: 16,
+                color: _textColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Open in Terminal',
+                style: GoogleFonts.aBeeZee(fontSize: 13),
+              ),
+            ],
+          ),
+          onTap: () {
+            _openInTerminal(node.path, node.isDirectory);
           },
         ),
         PopupMenuItem(
@@ -449,6 +468,51 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     }
 
     collapseRecursive(node);
+  }
+
+  void _copyPathToClipboard(String path) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: path));
+      AppLogger.success('Path copied to clipboard', tag: 'Sidebar', data: path);
+    } catch (e) {
+      AppLogger.error(
+        'Error copying path to clipboard',
+        tag: 'Sidebar',
+        error: e,
+        data: path,
+      );
+    }
+  }
+
+  void _openInTerminal(String path, bool isDirectory) async {
+    try {
+      // Determine the target path
+      // If it's a file, open the parent directory in Terminal
+      final targetPath = isDirectory ? path : File(path).parent.path;
+
+      AppLogger.info('Opening path in Terminal', tag: 'Sidebar', data: targetPath);
+
+      // Use 'open' command on macOS to open Terminal at the specified path
+      final result = await Process.run('open', [targetPath, '-a', 'Terminal']);
+
+      if (result.exitCode == 0) {
+        AppLogger.success('Opened in Terminal', tag: 'Sidebar', data: targetPath);
+      } else {
+        AppLogger.error(
+          'Failed to open Terminal',
+          tag: 'Sidebar',
+          data: 'Exit code: ${result.exitCode}',
+          error: result.stderr,
+        );
+      }
+    } catch (e) {
+      AppLogger.error(
+        'Error opening Terminal',
+        tag: 'Sidebar',
+        error: e,
+        data: path,
+      );
+    }
   }
 
   void _openInAndroidStudio(String path) async {

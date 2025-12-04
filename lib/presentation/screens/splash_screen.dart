@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../theme/seez_theme.dart';
 import '../../infrastructure/services/app_logger.dart';
 
@@ -25,6 +26,24 @@ class _SplashScreenState extends State<SplashScreen> {
   final TextEditingController _pathController = TextEditingController();
   String? _error;
   bool _isLoading = false;
+  String _versionInfo = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersionInfo();
+  }
+
+  Future<void> _loadVersionInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _versionInfo = 'v${packageInfo.version} "Barbados"';
+      });
+    } catch (e) {
+      AppLogger.error('Failed to load version info', tag: 'Splash', error: e);
+    }
+  }
 
   @override
   void dispose() {
@@ -414,6 +433,20 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
+
+              const SizedBox(height: 24),
+
+              // Version Info
+              if (_versionInfo.isNotEmpty)
+                Text(
+                  _versionInfo,
+                  style: GoogleFonts.inter(
+                    color: SeezTheme.subtitleBrown.withOpacity(0.6),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
             ],
           ),
         ),
