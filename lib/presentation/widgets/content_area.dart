@@ -395,8 +395,13 @@ class _ContentAreaState extends State<ContentArea> {
         currentTheme: widget.currentTheme,
         annotations: state.annotations,
         annotationKeys: _annotationKeys,
-        onTextSelected: (selectedText, widgetContext) {
-          _showAddAnnotationDialog(context, state, selectedText: selectedText);
+        onTextSelected: (selectedText, widgetContext, elementIndex) {
+          _showAddAnnotationDialog(
+            context,
+            state,
+            selectedText: selectedText,
+            elementIndex: elementIndex,
+          );
         },
       ),
     );
@@ -406,6 +411,7 @@ class _ContentAreaState extends State<ContentArea> {
     BuildContext context,
     DocumentationLoaded state, {
     String? selectedText,
+    int? elementIndex,
   }) async {
     AppLogger.info(
       '_showAddAnnotationDialog called',
@@ -441,6 +447,7 @@ class _ContentAreaState extends State<ContentArea> {
         AddAnnotationEvent(
           filePath: state.selectedFilePath!,
           anchorText: result.anchorText,
+          elementIndex: elementIndex,
           content: result.content,
           color: result.color,
           tags: result.tags,

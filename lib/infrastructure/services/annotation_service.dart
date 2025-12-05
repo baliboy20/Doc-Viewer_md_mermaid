@@ -55,6 +55,7 @@ class AnnotationService {
     required String filePath,
     required String anchorText,
     required int? lineNumber,
+    int? elementIndex,
     required String content,
     String color = 'yellow',
     List<String> tags = const [],
@@ -73,6 +74,7 @@ class AnnotationService {
       filePath: filePath,
       anchorText: uniqueAnchor,
       lineNumber: computedLineNumber,
+      elementIndex: elementIndex,
       content: content,
       color: color,
       createdAt: DateTime.now(),
@@ -82,7 +84,7 @@ class AnnotationService {
     AppLogger.info(
       'Adding annotation',
       tag: 'AnnotationService',
-      data: 'File: $filePath, Original: "$anchorText", Unique: "$uniqueAnchor", Line: $computedLineNumber',
+      data: 'File: $filePath, Original: "$anchorText", Unique: "$uniqueAnchor", Line: $computedLineNumber, Element: $elementIndex',
     );
 
     await saveAnnotation(annotation);

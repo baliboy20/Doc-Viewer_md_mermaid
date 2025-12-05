@@ -246,6 +246,7 @@ class DocumentationBloc extends Bloc<DocumentationEvent, DocumentationState> {
         filePath: event.filePath,
         anchorText: event.anchorText,
         lineNumber: event.lineNumber,
+        elementIndex: event.elementIndex,
         content: event.content,
         color: event.color,
         tags: event.tags,
