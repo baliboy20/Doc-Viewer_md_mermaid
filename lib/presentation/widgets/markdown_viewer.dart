@@ -412,11 +412,13 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
           );
 
           // Return an invisible widget with the key attached
-          // Using SizedBox instead of Container for better performance
+          // Using a tiny size (1x1) so it gets a proper position in render tree
+          // but remains virtually invisible
           return SizedBox(
             key: key,
-            width: 0,
-            height: 0,
+            width: 1,
+            height: 1,
+            child: Container(color: Colors.transparent),
           );
         } else {
           AppLogger.warning(

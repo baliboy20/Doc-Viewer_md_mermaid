@@ -128,6 +128,19 @@ class MarkdownElementIndexer {
       final line = lines[i];
       final trimmed = line.trim();
 
+      // Skip existing annotation markers - preserve them as-is
+      if (trimmed.startsWith('[](#annotation-marker-')) {
+        result.writeln(line);
+        inParagraph = false; // Annotation marker breaks paragraph flow
+        continue;
+      }
+
+      // Skip existing element markers - don't duplicate
+      if (trimmed.startsWith('[](#ln-')) {
+        result.writeln(line);
+        continue;
+      }
+
       // Handle code blocks
       if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
         final delimiter = trimmed.substring(0, 3);
