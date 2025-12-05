@@ -103,9 +103,9 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
 
   @override
   Widget build(BuildContext context) {
-    // Inject element markers in-memory for element index detection
-    // These are NOT persisted to files, only used for determining selection position
-    String contentToRender = _indexer.injectElementMarkersSimple(widget.content);
+    // Use content as-is for rendering
+    // Element markers cause parser crashes, so we don't inject them during display
+    String contentToRender = widget.content;
 
     return SelectionArea(
       onSelectionChanged: (selectedContent) {

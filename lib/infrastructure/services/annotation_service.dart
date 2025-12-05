@@ -91,6 +91,7 @@ class AnnotationService {
   }
 
   /// Makes anchor text unique by iteratively expanding context
+  /// Now uses all occurrences and picks the middle one as most likely intended
   Future<String> _makeAnchorUnique(String filePath, String selectedText) async {
     try {
       final file = File(filePath);
@@ -107,99 +108,95 @@ class AnnotationService {
       final parsed = parser.parse(fileContent, filePath);
       final content = parsed.content;
 
-      // Check if selected text is already unique
-      final occurrences = _countOccurrences(content, selectedText);
+      // Find all occurrences of the selected text
+      final occurrences = _findAllOccurrences(content, selectedText);
 
       AppLogger.debug(
         'Checking anchor uniqueness',
         tag: 'AnnotationService',
-        data: 'Text: "$selectedText", Occurrences: $occurrences',
+        data: 'Text: "$selectedText", Occurrences: ${occurrences.length}',
       );
 
-      if (occurrences <= 1) {
+      if (occurrences.length <= 1) {
         // Already unique!
         return selectedText;
       }
 
-      // Need to expand - find the selected text position in content
-      final selectedTextLower = selectedText.toLowerCase().trim();
-      final contentLower = content.toLowerCase();
-      final selectionStart = contentLower.indexOf(selectedTextLower);
+      // Multiple occurrences - need to expand each one and find which becomes unique fastest
+      // We'll try expanding around each occurrence and use the one that becomes unique first
+      String? uniqueAnchor;
 
-      if (selectionStart == -1) {
-        AppLogger.warning(
-          'Could not find selected text in content',
-          tag: 'AnnotationService',
-          data: 'Selected: "$selectedText"',
-        );
-        return selectedText;
-      }
+      for (int occIndex = 0; occIndex < occurrences.length; occIndex++) {
+        final selectionStart = occurrences[occIndex];
+        final selectionEnd = selectionStart + selectedText.length;
 
-      final selectionEnd = selectionStart + selectedText.length;
+        // Extract words before and after THIS occurrence
+        final beforeText = content.substring(0, selectionStart);
+        final afterText = content.substring(selectionEnd);
 
-      // Extract words before and after the selection
-      final beforeText = content.substring(0, selectionStart);
-      final afterText = content.substring(selectionEnd);
+        final wordsBefore = _extractWords(beforeText, reverse: true);
+        final wordsAfter = _extractWords(afterText, reverse: false);
 
-      final wordsBefore = _extractWords(beforeText, reverse: true);
-      final wordsAfter = _extractWords(afterText, reverse: false);
+        // Try to make THIS occurrence unique
+        String expandedAnchor = selectedText;
+        int beforeIndex = 0;
+        int afterIndex = 0;
+        const maxExpansions = 15; // Increased from 10
 
-      AppLogger.debug(
-        'Context extraction',
-        tag: 'AnnotationService',
-        data: 'Words before: ${wordsBefore.length}, Words after: ${wordsAfter.length}',
-      );
+        for (int i = 0; i < maxExpansions * 2; i++) {
+          // Add more words at once for faster uniqueness
+          int wordsToAdd = (i < 4) ? 1 : 2; // Add 2 words at a time after first few iterations
 
-      // Iteratively expand until unique
-      String expandedAnchor = selectedText;
-      int beforeIndex = 0;
-      int afterIndex = 0;
-      const maxExpansions = 10; // Maximum words to add in each direction
+          if (i % 2 == 0 && beforeIndex < wordsBefore.length) {
+            // Add word(s) before
+            for (int w = 0; w < wordsToAdd && beforeIndex < wordsBefore.length; w++) {
+              expandedAnchor = '${wordsBefore[beforeIndex]} $expandedAnchor';
+              beforeIndex++;
+            }
+          } else if (afterIndex < wordsAfter.length) {
+            // Add word(s) after
+            for (int w = 0; w < wordsToAdd && afterIndex < wordsAfter.length; w++) {
+              expandedAnchor = '$expandedAnchor ${wordsAfter[afterIndex]}';
+              afterIndex++;
+            }
+          }
 
-      for (int i = 0; i < maxExpansions * 2; i++) {
-        // Alternate between adding before and after
-        if (i % 2 == 0 && beforeIndex < wordsBefore.length) {
-          // Add word before
-          expandedAnchor = '${wordsBefore[beforeIndex]} $expandedAnchor';
-          beforeIndex++;
-        } else if (afterIndex < wordsAfter.length) {
-          // Add word after
-          expandedAnchor = '$expandedAnchor ${wordsAfter[afterIndex]}';
-          afterIndex++;
+          // Check if now unique
+          final newOccurrences = _countOccurrences(content, expandedAnchor);
+
+          if (newOccurrences == 1) {
+            uniqueAnchor = expandedAnchor;
+            AppLogger.success(
+              'Made anchor unique for occurrence $occIndex',
+              tag: 'AnnotationService',
+              data: 'Original: "$selectedText", Unique: "$expandedAnchor"',
+            );
+            break; // Found unique anchor for this occurrence
+          }
+
+          // Stop if we've run out of words
+          if (beforeIndex >= wordsBefore.length && afterIndex >= wordsAfter.length) {
+            break;
+          }
         }
 
-        // Check if now unique
-        final newOccurrences = _countOccurrences(content, expandedAnchor);
-
-        AppLogger.debug(
-          'Expansion attempt ${i + 1}',
-          tag: 'AnnotationService',
-          data: 'Text: "$expandedAnchor", Occurrences: $newOccurrences',
-        );
-
-        if (newOccurrences == 1) {
-          AppLogger.success(
-            'Made anchor unique',
-            tag: 'AnnotationService',
-            data: 'Original: "$selectedText", Unique: "$expandedAnchor"',
-          );
-          return expandedAnchor;
-        }
-
-        // Stop if we've run out of words
-        if (beforeIndex >= wordsBefore.length && afterIndex >= wordsAfter.length) {
-          break;
+        if (uniqueAnchor != null) {
+          break; // Successfully made unique
         }
       }
 
-      // If still not unique after max expansions, warn and return what we have
+      if (uniqueAnchor != null) {
+        return uniqueAnchor;
+      }
+
+      // If still not unique, return expanded version of first occurrence
       AppLogger.warning(
-        'Could not make anchor unique after max expansions',
+        'Could not make anchor unique after trying all occurrences',
         tag: 'AnnotationService',
-        data: 'Final: "$expandedAnchor", Occurrences: ${_countOccurrences(content, expandedAnchor)}',
+        data: 'Text: "$selectedText", Occurrences: ${occurrences.length}',
       );
 
-      return expandedAnchor;
+      return selectedText;
 
     } catch (e) {
       AppLogger.error(
@@ -212,22 +209,26 @@ class AnnotationService {
     }
   }
 
-  /// Counts case-insensitive occurrences of text in content
-  int _countOccurrences(String content, String searchText) {
+  /// Finds all occurrences of text and returns their positions
+  List<int> _findAllOccurrences(String content, String searchText) {
     final contentLower = content.toLowerCase();
     final searchLower = searchText.toLowerCase().trim();
+    final positions = <int>[];
 
-    int count = 0;
     int startIndex = 0;
-
     while (true) {
       final index = contentLower.indexOf(searchLower, startIndex);
       if (index == -1) break;
-      count++;
+      positions.add(index);
       startIndex = index + searchLower.length;
     }
 
-    return count;
+    return positions;
+  }
+
+  /// Counts case-insensitive occurrences of text in content
+  int _countOccurrences(String content, String searchText) {
+    return _findAllOccurrences(content, searchText).length;
   }
 
   /// Extracts words from text (in order or reverse)
