@@ -23,6 +23,7 @@ class AnnotationParser {
       // No annotations section
       // ignore: avoid_print
       print('DEBUG: No annotations section found');
+      // Still need to keep markers if they exist (for display purposes)
       return ParsedDocument(
         content: fileContent,
         annotations: [],
@@ -30,6 +31,7 @@ class AnnotationParser {
     }
 
     // Extract content (everything before annotations section)
+    // Keep the markers in the content for rendering
     final content = fileContent.substring(0, startIndex).trim();
 
     // Extract annotations section
@@ -187,17 +189,47 @@ class AnnotationParser {
   }
 
   /// Serializes content and annotations back to markdown format
+  /// Injects HTML comment markers at annotation positions
   String serialize(String content, List<Annotation> annotations) {
-    final buffer = StringBuffer();
-
-    // Write main content
-    buffer.write(content.trimRight());
-    buffer.write('\n\n');
-
     // If no annotations, return just content
     if (annotations.isEmpty) {
-      return buffer.toString();
+      // Remove any existing markers from content
+      final cleanContent = _removeAllMarkers(content);
+      return cleanContent.trimRight() + '\n\n';
     }
+
+    // First, remove any existing markers from content
+    String workingContent = _removeAllMarkers(content);
+
+    // Build a map of line numbers to annotation IDs
+    final Map<int, List<String>> lineToAnnotations = {};
+
+    for (final annotation in annotations) {
+      if (annotation.lineNumber != null && annotation.lineNumber! > 0) {
+        lineToAnnotations.putIfAbsent(annotation.lineNumber!, () => []);
+        lineToAnnotations[annotation.lineNumber!]!.add(annotation.id);
+      } else if (annotation.anchorText.isNotEmpty) {
+        // Try to find the line by anchor text
+        final lines = workingContent.split('\n');
+        final anchorLower = annotation.anchorText.toLowerCase().trim();
+
+        for (int i = 0; i < lines.length; i++) {
+          if (lines[i].toLowerCase().contains(anchorLower)) {
+            final lineNum = i + 1; // 1-indexed
+            lineToAnnotations.putIfAbsent(lineNum, () => []);
+            lineToAnnotations[lineNum]!.add(annotation.id);
+            break;
+          }
+        }
+      }
+    }
+
+    // Inject markers into content
+    final contentWithMarkers = _injectMarkers(workingContent, lineToAnnotations);
+
+    final buffer = StringBuffer();
+    buffer.write(contentWithMarkers.trimRight());
+    buffer.write('\n\n');
 
     // Write annotations section
     buffer.write(sectionDelimiter);
@@ -236,6 +268,46 @@ class AnnotationParser {
     buffer.write('\n');
 
     return buffer.toString();
+  }
+
+  /// Removes all annotation markers from content
+  String _removeAllMarkers(String content) {
+    // Remove lines that are annotation markers (markdown link format)
+    final lines = content.split('\n');
+    final cleanedLines = lines.where((line) {
+      final trimmed = line.trim();
+      // Match pattern: [](#annotation-marker-xxx)
+      return !trimmed.startsWith('[](#annotation-marker-');
+    }).toList();
+    return cleanedLines.join('\n');
+  }
+
+  /// Injects markdown link markers at specified line numbers
+  String _injectMarkers(String content, Map<int, List<String>> lineToAnnotations) {
+    if (lineToAnnotations.isEmpty) {
+      return content;
+    }
+
+    final lines = content.split('\n');
+    final result = StringBuffer();
+
+    for (int i = 0; i < lines.length; i++) {
+      final lineNum = i + 1; // 1-indexed
+
+      // Check if this line has annotations
+      if (lineToAnnotations.containsKey(lineNum)) {
+        // Add invisible markdown link markers for all annotations on this line
+        for (final annotationId in lineToAnnotations[lineNum]!) {
+          // Markdown link with empty text and anchor href
+          // Renders as: <a href="#annotation-marker-xxx"></a> (invisible)
+          result.writeln('[](#annotation-marker-$annotationId)');
+        }
+      }
+
+      result.writeln(lines[i]);
+    }
+
+    return result.toString().trimRight();
   }
 
   String _formatDateTime(DateTime dt) {

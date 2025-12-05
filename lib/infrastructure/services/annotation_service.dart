@@ -59,16 +59,19 @@ class AnnotationService {
     String color = 'yellow',
     List<String> tags = const [],
   }) async {
-    // If line number not provided, try to find it by searching for anchor text
+    // Make anchor text unique by expanding context if needed
+    final uniqueAnchor = await _makeAnchorUnique(filePath, anchorText);
+
+    // If line number not provided, try to find it by searching for unique anchor text
     int? computedLineNumber = lineNumber;
-    if (computedLineNumber == null && anchorText.isNotEmpty) {
-      computedLineNumber = await _findLineNumber(filePath, anchorText);
+    if (computedLineNumber == null && uniqueAnchor.isNotEmpty) {
+      computedLineNumber = await _findLineNumber(filePath, uniqueAnchor);
     }
 
     final annotation = Annotation(
       id: uuid.v4(),
       filePath: filePath,
-      anchorText: anchorText,
+      anchorText: uniqueAnchor,
       lineNumber: computedLineNumber,
       content: content,
       color: color,
@@ -79,10 +82,165 @@ class AnnotationService {
     AppLogger.info(
       'Adding annotation',
       tag: 'AnnotationService',
-      data: 'File: $filePath, Anchor: $anchorText, Line: $computedLineNumber',
+      data: 'File: $filePath, Original: "$anchorText", Unique: "$uniqueAnchor", Line: $computedLineNumber',
     );
 
     await saveAnnotation(annotation);
+  }
+
+  /// Makes anchor text unique by iteratively expanding context
+  Future<String> _makeAnchorUnique(String filePath, String selectedText) async {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) {
+        AppLogger.warning(
+          'File does not exist for anchor uniqueness check',
+          tag: 'AnnotationService',
+          data: filePath,
+        );
+        return selectedText;
+      }
+
+      final fileContent = await file.readAsString();
+      final parsed = parser.parse(fileContent, filePath);
+      final content = parsed.content;
+
+      // Check if selected text is already unique
+      final occurrences = _countOccurrences(content, selectedText);
+
+      AppLogger.debug(
+        'Checking anchor uniqueness',
+        tag: 'AnnotationService',
+        data: 'Text: "$selectedText", Occurrences: $occurrences',
+      );
+
+      if (occurrences <= 1) {
+        // Already unique!
+        return selectedText;
+      }
+
+      // Need to expand - find the selected text position in content
+      final selectedTextLower = selectedText.toLowerCase().trim();
+      final contentLower = content.toLowerCase();
+      final selectionStart = contentLower.indexOf(selectedTextLower);
+
+      if (selectionStart == -1) {
+        AppLogger.warning(
+          'Could not find selected text in content',
+          tag: 'AnnotationService',
+          data: 'Selected: "$selectedText"',
+        );
+        return selectedText;
+      }
+
+      final selectionEnd = selectionStart + selectedText.length;
+
+      // Extract words before and after the selection
+      final beforeText = content.substring(0, selectionStart);
+      final afterText = content.substring(selectionEnd);
+
+      final wordsBefore = _extractWords(beforeText, reverse: true);
+      final wordsAfter = _extractWords(afterText, reverse: false);
+
+      AppLogger.debug(
+        'Context extraction',
+        tag: 'AnnotationService',
+        data: 'Words before: ${wordsBefore.length}, Words after: ${wordsAfter.length}',
+      );
+
+      // Iteratively expand until unique
+      String expandedAnchor = selectedText;
+      int beforeIndex = 0;
+      int afterIndex = 0;
+      const maxExpansions = 10; // Maximum words to add in each direction
+
+      for (int i = 0; i < maxExpansions * 2; i++) {
+        // Alternate between adding before and after
+        if (i % 2 == 0 && beforeIndex < wordsBefore.length) {
+          // Add word before
+          expandedAnchor = '${wordsBefore[beforeIndex]} $expandedAnchor';
+          beforeIndex++;
+        } else if (afterIndex < wordsAfter.length) {
+          // Add word after
+          expandedAnchor = '$expandedAnchor ${wordsAfter[afterIndex]}';
+          afterIndex++;
+        }
+
+        // Check if now unique
+        final newOccurrences = _countOccurrences(content, expandedAnchor);
+
+        AppLogger.debug(
+          'Expansion attempt ${i + 1}',
+          tag: 'AnnotationService',
+          data: 'Text: "$expandedAnchor", Occurrences: $newOccurrences',
+        );
+
+        if (newOccurrences == 1) {
+          AppLogger.success(
+            'Made anchor unique',
+            tag: 'AnnotationService',
+            data: 'Original: "$selectedText", Unique: "$expandedAnchor"',
+          );
+          return expandedAnchor;
+        }
+
+        // Stop if we've run out of words
+        if (beforeIndex >= wordsBefore.length && afterIndex >= wordsAfter.length) {
+          break;
+        }
+      }
+
+      // If still not unique after max expansions, warn and return what we have
+      AppLogger.warning(
+        'Could not make anchor unique after max expansions',
+        tag: 'AnnotationService',
+        data: 'Final: "$expandedAnchor", Occurrences: ${_countOccurrences(content, expandedAnchor)}',
+      );
+
+      return expandedAnchor;
+
+    } catch (e) {
+      AppLogger.error(
+        'Error making anchor unique',
+        tag: 'AnnotationService',
+        error: e,
+        data: 'Selected: "$selectedText"',
+      );
+      return selectedText;
+    }
+  }
+
+  /// Counts case-insensitive occurrences of text in content
+  int _countOccurrences(String content, String searchText) {
+    final contentLower = content.toLowerCase();
+    final searchLower = searchText.toLowerCase().trim();
+
+    int count = 0;
+    int startIndex = 0;
+
+    while (true) {
+      final index = contentLower.indexOf(searchLower, startIndex);
+      if (index == -1) break;
+      count++;
+      startIndex = index + searchLower.length;
+    }
+
+    return count;
+  }
+
+  /// Extracts words from text (in order or reverse)
+  List<String> _extractWords(String text, {required bool reverse}) {
+    // Remove markdown syntax and split into words
+    final cleaned = text
+        .replaceAll(RegExp(r'[#*_\[\]\(\)]'), ' ') // Remove markdown chars
+        .replaceAll(RegExp(r'\s+'), ' ') // Normalize whitespace
+        .trim();
+
+    if (cleaned.isEmpty) return [];
+
+    final words = cleaned.split(' ').where((w) => w.isNotEmpty).toList();
+
+    return reverse ? words.reversed.toList() : words;
   }
 
   /// Finds the line number where the anchor text appears in the file

@@ -56,71 +56,133 @@ class _ContentAreaState extends State<ContentArea> {
   }
 
   void _scrollToAnnotation(annotation) {
-    AppLogger.debug(
+    AppLogger.info(
       'Attempting to scroll to annotation',
       tag: 'ContentArea',
-      data: 'ID: ${annotation.id}, Anchor: "${annotation.anchorText}"',
+      data: 'ID: ${annotation.id}, Anchor: "${annotation.anchorText}", Line: ${annotation.lineNumber}',
     );
 
     // Get the GlobalKey for this annotation
     final key = _getAnnotationKey(annotation.id);
 
+    AppLogger.debug(
+      'Got GlobalKey for annotation',
+      tag: 'ContentArea',
+      data: 'Key: $key, HasContext: ${key.currentContext != null}',
+    );
+
     // Wait for the next frame to ensure widgets are built
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        // Get the RenderBox from the GlobalKey
-        final RenderBox? renderBox = key.currentContext?.findRenderObject() as RenderBox?;
+      _attemptScroll(annotation, key);
+    });
+  }
 
-        if (renderBox != null) {
-          // Get the position of the annotation marker relative to the scroll view
-          final RenderObject? scrollViewRenderObject =
-              _scrollController.position.context.storageContext.findRenderObject();
+  void _attemptScroll(annotation, GlobalKey key) {
+    try {
+      // Get the RenderBox from the GlobalKey
+      final context = key.currentContext;
 
-          if (scrollViewRenderObject is RenderBox) {
-            // Calculate the offset of the annotation marker
-            final offset = renderBox.localToGlobal(Offset.zero, ancestor: scrollViewRenderObject);
+      AppLogger.debug(
+        'Checking GlobalKey context',
+        tag: 'ContentArea',
+        data: 'ID: ${annotation.id}, Context: ${context != null ? "exists" : "null"}',
+      );
 
-            // Calculate target scroll position
-            // Subtract some offset to show context above the annotation
-            final targetPosition = _scrollController.offset + offset.dy - 100;
+      if (context == null) {
+        AppLogger.warning(
+          'GlobalKey context is null - marker might not be in rendered content',
+          tag: 'ContentArea',
+          data: 'ID: ${annotation.id}, Anchor: "${annotation.anchorText}"',
+        );
+        _scrollToLine(annotation.lineNumber ?? 1);
+        return;
+      }
 
-            // Clamp to valid scroll range
-            final maxScroll = _scrollController.position.maxScrollExtent;
-            final clampedPosition = targetPosition.clamp(0.0, maxScroll);
+      final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
 
-            _scrollController.animateTo(
-              clampedPosition,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeInOut,
-            );
+      if (renderBox != null) {
+        AppLogger.debug(
+          'Found RenderBox',
+          tag: 'ContentArea',
+          data: 'ID: ${annotation.id}, Size: ${renderBox.size}',
+        );
 
-            AppLogger.info(
-              'Scrolled to annotation using GlobalKey',
-              tag: 'ContentArea',
-              data: 'ID: ${annotation.id}, Position: ${clampedPosition.toStringAsFixed(1)}',
-            );
-          } else {
-            AppLogger.warning(
-              'Could not find scroll view RenderBox',
-              tag: 'ContentArea',
-              data: 'ID: ${annotation.id}',
-            );
-          }
+        // Get the position of the annotation marker relative to the scroll view
+        final RenderObject? scrollViewRenderObject =
+            _scrollController.position.context.storageContext.findRenderObject();
+
+        if (scrollViewRenderObject is RenderBox) {
+          // Calculate the offset of the annotation marker
+          final offset = renderBox.localToGlobal(Offset.zero, ancestor: scrollViewRenderObject);
+
+          AppLogger.debug(
+            'Calculated offset',
+            tag: 'ContentArea',
+            data: 'ID: ${annotation.id}, Offset: $offset, Current scroll: ${_scrollController.offset}',
+          );
+
+          // Calculate target scroll position
+          // Subtract some offset to show context above the annotation
+          final targetPosition = _scrollController.offset + offset.dy - 100;
+
+          // Clamp to valid scroll range
+          final maxScroll = _scrollController.position.maxScrollExtent;
+          final clampedPosition = targetPosition.clamp(0.0, maxScroll);
+
+          AppLogger.info(
+            'Scrolling to annotation using GlobalKey',
+            tag: 'ContentArea',
+            data: 'ID: ${annotation.id}, Target: ${targetPosition.toStringAsFixed(1)}, Clamped: ${clampedPosition.toStringAsFixed(1)}',
+          );
+
+          _scrollController.animateTo(
+            clampedPosition,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
         } else {
           AppLogger.warning(
-            'GlobalKey context not available yet',
+            'Could not find scroll view RenderBox',
             tag: 'ContentArea',
-            data: 'ID: ${annotation.id}, Key: $key',
+            data: 'ID: ${annotation.id}',
           );
+          _scrollToLine(annotation.lineNumber ?? 1);
         }
-      } catch (e) {
-        AppLogger.error(
-          'Error scrolling to annotation',
+      } else {
+        AppLogger.warning(
+          'RenderBox is null',
           tag: 'ContentArea',
-          data: 'ID: ${annotation.id}, Error: $e',
+          data: 'ID: ${annotation.id}',
         );
+        _scrollToLine(annotation.lineNumber ?? 1);
       }
-    });
+    } catch (e) {
+      AppLogger.error(
+        'Error scrolling to annotation',
+        tag: 'ContentArea',
+        data: 'ID: ${annotation.id}, Error: $e',
+      );
+      _scrollToLine(annotation.lineNumber ?? 1);
+    }
+  }
+
+  /// Fallback: scroll to a specific line number
+  void _scrollToLine(int lineNumber) {
+    final baseFontSize = widget.markdownStyles.baseFontSize;
+    final baseLineHeight = baseFontSize * 1.6;
+    final estimatedPosition = lineNumber * baseLineHeight;
+
+    AppLogger.info(
+      'Fallback: Scrolling to line number',
+      tag: 'ContentArea',
+      data: 'Line: $lineNumber, Estimated position: ${estimatedPosition.toStringAsFixed(1)}',
+    );
+
+    _scrollController.animateTo(
+      estimatedPosition,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
   }
 
   Color get _backgroundColor {

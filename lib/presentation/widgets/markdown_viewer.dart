@@ -52,53 +52,9 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
         : AppTheme.primaryBlue;
   }
 
-  /// Inject HTML comment markers at annotation positions
-  String _injectAnnotationMarkers(String content) {
-    if (widget.annotations == null || widget.annotations!.isEmpty) {
-      return content;
-    }
-
-    final lines = content.split('\n');
-    final Map<int, List<String>> lineMarkers = {};
-
-    // Group annotations by line number
-    for (var annotation in widget.annotations!) {
-      // Search for anchor text to find exact line
-      final anchorLower = annotation.anchorText.toLowerCase().trim();
-      int? foundLine;
-
-      for (int i = 0; i < lines.length; i++) {
-        final lineLower = lines[i].toLowerCase();
-        if (lineLower.contains(anchorLower)) {
-          foundLine = i;
-          break;
-        }
-      }
-
-      if (foundLine != null) {
-        lineMarkers.putIfAbsent(foundLine, () => []);
-        lineMarkers[foundLine]!.add(annotation.id);
-      }
-    }
-
-    // Inject markers into content
-    final result = StringBuffer();
-    for (int i = 0; i < lines.length; i++) {
-      // Add any markers for this line
-      if (lineMarkers.containsKey(i)) {
-        for (var annotationId in lineMarkers[i]!) {
-          result.writeln('<!-- ANNOTATION_KEY=$annotationId -->');
-        }
-      }
-      result.writeln(lines[i]);
-    }
-
-    return result.toString();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final contentWithMarkers = _injectAnnotationMarkers(widget.content);
+    // Markers are now permanently in the file content, no need to inject dynamically
 
     return SelectionArea(
       onSelectionChanged: (selectedContent) {
@@ -142,7 +98,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
         );
       },
       child: MarkdownBody(
-        data: contentWithMarkers,
+        data: widget.content,
         selectable: false, // Disable MarkdownBody's selection, use SelectionArea instead
         styleSheet: _buildMarkdownStyleSheet(context),
         onTapLink: (text, href, title) {
@@ -359,7 +315,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
   }
 }
 
-/// Custom builder for HTML comments to attach GlobalKeys to annotation markers
+/// Custom builder for HTML elements to attach GlobalKeys to annotation markers
 class HtmlCommentBuilder extends MarkdownElementBuilder {
   final Map<String, GlobalKey> annotationKeys;
 
@@ -369,26 +325,47 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
 
   @override
   Widget? visitElementAfter(element, TextStyle? preferredStyle) {
-    // Check if this is an HTML comment with annotation marker
-    final comment = element.textContent.trim();
-    if (comment.startsWith('ANNOTATION_KEY=')) {
-      final annotationId = comment.substring('ANNOTATION_KEY='.length).trim();
+    // Check if this is an anchor tag with annotation marker href
+    if (element.tag == 'a') {
+      final href = element.attributes['href'];
+      if (href != null && href.startsWith('#annotation-marker-')) {
+        final annotationId = href.substring('#annotation-marker-'.length);
 
-      // Get or create GlobalKey for this annotation
-      final key = annotationKeys[annotationId];
-
-      if (key != null) {
-        // Return an invisible widget with the key attached
-        return Container(
-          key: key,
-          height: 0,
-          width: 0,
+        AppLogger.debug(
+          'Found annotation marker anchor in HTML',
+          tag: 'HtmlCommentBuilder',
+          data: 'ID: $annotationId, href: $href',
         );
+
+        // Get or create GlobalKey for this annotation
+        final key = annotationKeys[annotationId];
+
+        if (key != null) {
+          AppLogger.info(
+            'Attaching GlobalKey to annotation marker anchor',
+            tag: 'HtmlCommentBuilder',
+            data: 'ID: $annotationId',
+          );
+
+          // Return an invisible widget with the key attached
+          // Using SizedBox instead of Container for better performance
+          return SizedBox(
+            key: key,
+            width: 0,
+            height: 0,
+          );
+        } else {
+          AppLogger.warning(
+            'No GlobalKey found for annotation',
+            tag: 'HtmlCommentBuilder',
+            data: 'ID: $annotationId',
+          );
+        }
       }
     }
 
-    // Return null for other HTML comments (will be ignored)
-    return const SizedBox.shrink();
+    // Return null for other HTML elements (use default rendering)
+    return null;
   }
 }
 
