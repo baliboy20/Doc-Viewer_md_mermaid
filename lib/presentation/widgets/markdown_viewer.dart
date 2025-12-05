@@ -175,7 +175,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
             currentTheme: widget.currentTheme,
             stylePreferences: widget.stylePreferences,
           ),
-          'html': HtmlCommentBuilder(
+          'a': AnnotationMarkerBuilder(
             annotationKeys: widget.annotationKeys ?? {},
             accentColor: _accentColor,
           ),
@@ -380,12 +380,12 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
   }
 }
 
-/// Custom builder for HTML elements to attach GlobalKeys to annotation markers
-class HtmlCommentBuilder extends MarkdownElementBuilder {
+/// Custom builder for anchor tags to render annotation markers with icons
+class AnnotationMarkerBuilder extends MarkdownElementBuilder {
   final Map<String, GlobalKey> annotationKeys;
   final Color accentColor;
 
-  HtmlCommentBuilder({
+  AnnotationMarkerBuilder({
     required this.annotationKeys,
     required this.accentColor,
   });
@@ -399,8 +399,8 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
         final annotationId = href.substring('#annotation-marker-'.length);
 
         AppLogger.debug(
-          'Found annotation marker anchor in HTML',
-          tag: 'HtmlCommentBuilder',
+          'Found annotation marker anchor',
+          tag: 'AnnotationMarkerBuilder',
           data: 'ID: $annotationId, href: $href',
         );
 
@@ -409,8 +409,8 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
 
         if (key != null) {
           AppLogger.info(
-            'Attaching GlobalKey to annotation marker anchor',
-            tag: 'HtmlCommentBuilder',
+            'Rendering annotation marker icon',
+            tag: 'AnnotationMarkerBuilder',
             data: 'ID: $annotationId',
           );
 
@@ -428,7 +428,7 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
         } else {
           AppLogger.warning(
             'No GlobalKey found for annotation',
-            tag: 'HtmlCommentBuilder',
+            tag: 'AnnotationMarkerBuilder',
             data: 'ID: $annotationId',
           );
         }
