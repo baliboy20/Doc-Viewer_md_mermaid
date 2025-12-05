@@ -414,15 +414,15 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
             data: 'ID: $annotationId',
           );
 
-          // Return a small visible icon to mark the annotation position
+          // Return a bold crimson bookmark icon to mark the annotation position
           // This helps users see exactly where annotations are anchored
           return Container(
             key: key,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            child: Icon(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            child: const Icon(
               Icons.bookmark,
-              size: 14,
-              color: accentColor.withValues(alpha: 0.6),
+              size: 18,
+              color: Color(0xFFDC143C), // Bold Crimson
             ),
           );
         } else {
