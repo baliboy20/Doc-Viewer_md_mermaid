@@ -6,8 +6,8 @@
 set -e  # Exit on error
 
 # Configuration
-APP_NAME="Florence"
-APP_BUNDLE_NAME="Florence"
+APP_NAME="DocViewer"
+APP_BUNDLE_NAME="DocViewer"
 BUILD_DIR="build/macos/Build/Products/Release"
 APP_BUNDLE="$BUILD_DIR/$APP_BUNDLE_NAME.app"
 DMG_DIR="build/dmg"
@@ -33,6 +33,16 @@ echo ""
 echo -e "App: ${YELLOW}$APP_NAME${NC}"
 echo -e "Version: ${YELLOW}$VERSION${NC}"
 echo -e "Version Name: ${YELLOW}$VERSION_NAME${NC}"
+echo ""
+
+# Build the macOS release binary
+echo -e "${GREEN}Building macOS release binary...${NC}"
+flutter build macos --release
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: Flutter build failed${NC}"
+    exit 1
+fi
 echo ""
 
 # Check if the app bundle exists
@@ -142,4 +152,12 @@ echo ""
 # Get file size
 FILE_SIZE=$(du -h "build/$DMG_NAME" | cut -f1)
 echo -e "Size: ${YELLOW}$FILE_SIZE${NC}"
+echo ""
+
+# Copy to deploy folder
+echo -e "${GREEN}Copying to deploy folder...${NC}"
+DEPLOY_DIR="deploy"
+mkdir -p "$DEPLOY_DIR"
+cp "build/$DMG_NAME" "$DEPLOY_DIR/"
+echo -e "Copied to: ${YELLOW}$DEPLOY_DIR/$DMG_NAME${NC}"
 echo ""

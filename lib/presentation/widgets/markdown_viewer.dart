@@ -6,60 +6,115 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import '../../domain/entities/markdown_style_preferences.dart';
+import '../../infrastructure/services/app_logger.dart';
 import '../theme/seez_theme.dart';
 import '../theme/app_theme.dart';
 import 'mermaid_diagram.dart';
 
 /// Markdown viewer with custom styling and code highlighting
-class MarkdownViewer extends StatelessWidget {
+class MarkdownViewer extends StatefulWidget {
   final String content;
   final MarkdownStylePreferences stylePreferences;
   final String currentTheme;
+  final Function(String selectedText, BuildContext context)? onTextSelected;
+  final List<dynamic>? annotations; // List of annotations for anchor injection
 
   const MarkdownViewer({
     super.key,
     required this.content,
     required this.stylePreferences,
     required this.currentTheme,
+    this.onTextSelected,
+    this.annotations,
   });
 
+  @override
+  State<MarkdownViewer> createState() => _MarkdownViewerState();
+}
+
+class _MarkdownViewerState extends State<MarkdownViewer> {
+  final TextSelection _textSelection = const TextSelection.collapsed(offset: 0);
+  String _selectedText = '';
+
   Color get _textColor {
-    return currentTheme == 'seez'
+    return widget.currentTheme == 'seez'
         ? SeezTheme.darkBrownText
-        : (currentTheme == 'dark'
+        : (widget.currentTheme == 'dark'
             ? AppTheme.textOnDark
             : AppTheme.textPrimary);
   }
 
   Color get _accentColor {
-    return currentTheme == 'seez'
+    return widget.currentTheme == 'seez'
         ? SeezTheme.primaryBrown
         : AppTheme.primaryBlue;
   }
 
   @override
   Widget build(BuildContext context) {
-    return MarkdownBody(
-      data: content,
-      selectable: true,
-      styleSheet: _buildMarkdownStyleSheet(context),
-      onTapLink: (text, href, title) {
-        if (href != null) {
-          _launchUrl(href);
-        }
+    return SelectionArea(
+      onSelectionChanged: (selectedContent) {
+        setState(() {
+          _selectedText = selectedContent?.plainText ?? '';
+          AppLogger.debug(
+            'Text selected: "${_selectedText}"',
+            tag: 'MarkdownViewer',
+          );
+        });
       },
-      builders: {
-        'code': CodeElementBuilder(
-          currentTheme: currentTheme,
-          stylePreferences: stylePreferences,
-        ),
+      contextMenuBuilder: (context, selectableRegionState) {
+        // Get the default Copy button
+        final defaultButtons = selectableRegionState.contextMenuButtonItems;
+
+        return AdaptiveTextSelectionToolbar(
+          anchors: selectableRegionState.contextMenuAnchors,
+          children: [
+            // Copy button (first default button is usually copy)
+            if (defaultButtons.isNotEmpty)
+              AdaptiveTextSelectionToolbar.getAdaptiveButtons(
+                context,
+                [defaultButtons.first], // Only include Copy button
+              ).first,
+
+            // Add Annotation button
+            if (_selectedText.isNotEmpty && widget.onTextSelected != null)
+              TextButton(
+                onPressed: () {
+                  AppLogger.info(
+                    'Add Annotation button clicked',
+                    tag: 'MarkdownViewer',
+                    data: 'Selected text: "$_selectedText"',
+                  );
+                  ContextMenuController.removeAny();
+                  widget.onTextSelected!(_selectedText, context);
+                },
+                child: const Text('Add Annotation'),
+              ),
+          ],
+        );
       },
+      child: MarkdownBody(
+        data: widget.content,
+        selectable: false, // Disable MarkdownBody's selection, use SelectionArea instead
+        styleSheet: _buildMarkdownStyleSheet(context),
+        onTapLink: (text, href, title) {
+          if (href != null) {
+            _launchUrl(href);
+          }
+        },
+        builders: {
+          'code': CodeElementBuilder(
+            currentTheme: widget.currentTheme,
+            stylePreferences: widget.stylePreferences,
+          ),
+        },
+      ),
     );
   }
 
   MarkdownStyleSheet _buildMarkdownStyleSheet(BuildContext context) {
     final baseTextStyle = GoogleFonts.inter(
-      fontSize: stylePreferences.baseFontSize,
+      fontSize: widget.stylePreferences.baseFontSize,
       height: 1.6,
       letterSpacing: 0.2,
       color: _textColor,
@@ -67,17 +122,17 @@ class MarkdownViewer extends StatelessWidget {
 
     return MarkdownStyleSheet(
       // Headers - Using Old Standard TT for Seez theme
-      h1: (currentTheme == 'seez'
+      h1: (widget.currentTheme == 'seez'
               ? GoogleFonts.oldStandardTt()
               : GoogleFonts.inter())
           .copyWith(
-        fontSize: stylePreferences.h1FontSize,
+        fontSize: widget.stylePreferences.h1FontSize,
         fontWeight: FontWeight.w400,
         color: _textColor,
         height: 1.3,
       ),
 
-      h2: (currentTheme == 'seez'
+      h2: (widget.currentTheme == 'seez'
               ? GoogleFonts.oldStandardTt()
               : GoogleFonts.inter())
           .copyWith(
@@ -87,7 +142,7 @@ class MarkdownViewer extends StatelessWidget {
         height: 1.3,
       ),
 
-      h3: (currentTheme == 'seez'
+      h3: (widget.currentTheme == 'seez'
               ? GoogleFonts.oldStandardTt()
               : GoogleFonts.inter())
           .copyWith(
@@ -120,11 +175,11 @@ class MarkdownViewer extends StatelessWidget {
 
       // Strong/Bold - Custom styling with mediumBrownBorder color
       strong: baseTextStyle.copyWith(
-        color: currentTheme == 'seez'
+        color: widget.currentTheme == 'seez'
             ? SeezTheme.mediumBrownBorder
             : _accentColor,
         fontWeight: FontWeight.w600,
-        fontSize: stylePreferences.baseFontSize - 1,
+        fontSize: widget.stylePreferences.baseFontSize - 1,
       ),
 
       // Emphasis/Italic
@@ -134,31 +189,31 @@ class MarkdownViewer extends StatelessWidget {
 
       // Code (inline)
       code: GoogleFonts.jetBrainsMono(
-        fontSize: stylePreferences.codeFontSize,
-        backgroundColor: currentTheme == 'seez'
+        fontSize: widget.stylePreferences.codeFontSize,
+        backgroundColor: widget.currentTheme == 'seez'
             ? SeezTheme.lightCreamTile
-            : (currentTheme == 'dark'
+            : (widget.currentTheme == 'dark'
                 ? AppTheme.darkBackground
                 : AppTheme.lighterBackground),
-        color: currentTheme == 'seez'
+        color: widget.currentTheme == 'seez'
             ? SeezTheme.subtitleBrown
-            : (currentTheme == 'dark'
+            : (widget.currentTheme == 'dark'
                 ? AppTheme.textOnDark
                 : AppTheme.textPrimary),
       ),
 
       // Code blocks
       codeblockDecoration: BoxDecoration(
-        color: currentTheme == 'seez'
+        color: widget.currentTheme == 'seez'
             ? SeezTheme.lightBeigeGradient1
-            : (currentTheme == 'dark'
+            : (widget.currentTheme == 'dark'
                 ? AppTheme.darkBackground
                 : AppTheme.lighterBackground),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: currentTheme == 'seez'
+          color: widget.currentTheme == 'seez'
               ? SeezTheme.mediumBrownBorder
-              : (currentTheme == 'dark'
+              : (widget.currentTheme == 'dark'
                   ? AppTheme.borderDark
                   : AppTheme.border),
           width: 1,
@@ -177,9 +232,9 @@ class MarkdownViewer extends StatelessWidget {
       ),
 
       blockquoteDecoration: BoxDecoration(
-        color: currentTheme == 'seez'
+        color: widget.currentTheme == 'seez'
             ? SeezTheme.lightCreamTile
-            : (currentTheme == 'dark'
+            : (widget.currentTheme == 'dark'
                 ? AppTheme.darkBackground.withValues(alpha: 0.5)
                 : AppTheme.lighterBackground),
         borderRadius: BorderRadius.circular(4),
@@ -193,7 +248,7 @@ class MarkdownViewer extends StatelessWidget {
 
       // Links
       a: baseTextStyle.copyWith(
-        color: currentTheme == 'seez'
+        color: widget.currentTheme == 'seez'
             ? SeezTheme.subtitleBlue
             : AppTheme.primaryBlue,
         decoration: TextDecoration.underline,
@@ -203,13 +258,13 @@ class MarkdownViewer extends StatelessWidget {
       horizontalRuleDecoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: (currentTheme == 'seez'
+            color: (widget.currentTheme == 'seez'
                     ? SeezTheme.mediumBrownBorder
-                    : (currentTheme == 'dark'
+                    : (widget.currentTheme == 'dark'
                         ? AppTheme.borderDark
                         : AppTheme.divider))
                 .withValues(alpha: 0.3),
-            width: stylePreferences.hrThickness,
+            width: widget.stylePreferences.hrThickness,
           ),
         ),
       ),
@@ -223,9 +278,9 @@ class MarkdownViewer extends StatelessWidget {
       tableBody: baseTextStyle,
 
       tableBorder: TableBorder.all(
-        color: currentTheme == 'seez'
+        color: widget.currentTheme == 'seez'
             ? SeezTheme.mediumBrownBorder
-            : (currentTheme == 'dark'
+            : (widget.currentTheme == 'dark'
                 ? AppTheme.borderDark
                 : AppTheme.border),
         width: 1,

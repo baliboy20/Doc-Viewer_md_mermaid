@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/seez_theme.dart';
 import '../widgets/sidebar_area.dart';
 import '../widgets/content_area.dart';
 import '../widgets/style_settings_dialog.dart';
 import '../../domain/entities/markdown_style_preferences.dart';
+import '../../application/bloc/documentation_bloc.dart';
+import '../../application/bloc/documentation_event.dart';
 
 /// Main documentation viewer screen with animated header and layout
 class DocumentationScreen extends StatefulWidget {
@@ -59,22 +62,263 @@ class _DocumentationScreenState extends State<DocumentationScreen>
     );
   }
 
-  void _showThemeMenu() {
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        MediaQuery.of(context).size.width - 200,
-        80,
-        20,
-        0,
+  void _refreshFileTree() {
+    context.read<DocumentationBloc>().add(RefreshFileTreeEvent());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: DocumentationAppBar(
+        animationController: _animationController,
+        docsRootPath: widget.docsRootPath,
+        onChangeFolder: widget.onChangeFolder,
+        onRefreshFileTree: _refreshFileTree,
+        currentTheme: widget.currentTheme,
+        onThemeChanged: widget.onThemeChanged,
+        onStyleSettings: _showStyleSettings,
       ),
-      items: [
+      body: Row(
+        children: [
+          // Sidebar Area
+          SidebarArea(
+            currentTheme: widget.currentTheme,
+          ),
+
+          // Content Area
+          Expanded(
+            child: ContentArea(
+              markdownStyles: widget.markdownStyles,
+              currentTheme: widget.currentTheme,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Custom AppBar with animated gradient header
+class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final AnimationController animationController;
+  final String docsRootPath;
+  final VoidCallback onChangeFolder;
+  final VoidCallback onRefreshFileTree;
+  final String currentTheme;
+  final Function(String) onThemeChanged;
+  final VoidCallback onStyleSettings;
+
+  const DocumentationAppBar({
+    super.key,
+    required this.animationController,
+    required this.docsRootPath,
+    required this.onChangeFolder,
+    required this.onRefreshFileTree,
+    required this.currentTheme,
+    required this.onThemeChanged,
+    required this.onStyleSettings,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(60);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            SeezTheme.primaryBrown,
+            SeezTheme.mediumBrownBorder,
+            SeezTheme.primaryBrown.withValues(alpha: 0.8),
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Animated floating circles
+          AnimatedBuilder(
+            animation: animationController,
+            builder: (context, child) {
+              return CustomPaint(
+                painter: FloatingCirclesPainter(
+                  animationValue: animationController.value,
+                ),
+                size: const Size(double.infinity, 60),
+              );
+            },
+          ),
+
+          // Header content
+          Padding(
+            padding: const EdgeInsets.fromLTRB(36, 15, 4, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo/Title
+                Text(
+                  'Rome Doc Viewer',
+                  style: GoogleFonts.pacifico(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.95),
+                    letterSpacing: 0.5,
+                    shadows: [
+                      const Shadow(
+                        offset: Offset(0, 2),
+                        blurRadius: 4,
+                        color: Colors.black26,
+                      ),
+                      ],
+                  ),
+                ),
+
+                const SizedBox(width: 138),
+
+                // Folder path
+                Expanded(
+
+                  child: Text(
+                    docsRootPath,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontStyle: FontStyle.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Change Folder button
+                IconButton(
+                  icon: Icon(
+                    CupertinoIcons.folder,
+                    color: Colors.white.withValues(alpha: 0.95),
+                  ),
+                  tooltip: 'Change Documentation Folder',
+                  onPressed: onChangeFolder,
+                ),
+
+                const SizedBox(width: 8),
+
+                // Refresh button
+                IconButton(
+                  icon: Icon(
+                    CupertinoIcons.refresh,
+                    color: Colors.white.withValues(alpha: 0.95),
+                  ),
+                  tooltip: 'Refresh File Tree',
+                  onPressed: onRefreshFileTree,
+                ),
+
+                const SizedBox(width: 8),
+
+                // Style settings button
+                IconButton(
+                  icon: Icon(
+                    CupertinoIcons.textformat,
+                    color: Colors.white.withValues(alpha: 0.95),
+                  ),
+                  tooltip: 'Style Settings',
+                  onPressed: onStyleSettings,
+                ),
+
+                const SizedBox(width: 8),
+
+                // Theme menu
+                ThemeMenuButton(
+                  currentTheme: currentTheme,
+                  onThemeChanged: onThemeChanged,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Custom painter for animated floating circles in header
+class FloatingCirclesPainter extends CustomPainter {
+  final double animationValue;
+
+  FloatingCirclesPainter({required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..style = PaintingStyle.fill;
+
+    // Circle 1
+    final offset1 = Offset(
+      size.width * 0.2 + (animationValue * 30),
+      size.height * 0.3 + (animationValue * 10),
+    );
+    canvas.drawCircle(offset1, 40, paint);
+
+    // Circle 2
+    final offset2 = Offset(
+      size.width * 0.6 - (animationValue * 20),
+      size.height * 0.6 - (animationValue * 15),
+    );
+    canvas.drawCircle(offset2, 30, paint);
+
+    // Circle 3
+    final offset3 = Offset(
+      size.width * 0.85 + (animationValue * 15),
+      size.height * 0.4 + (animationValue * 20),
+    );
+    canvas.drawCircle(offset3, 35, paint);
+  }
+
+  @override
+  bool shouldRepaint(FloatingCirclesPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue;
+  }
+}
+
+/// Stateless widget for theme selection menu
+class ThemeMenuButton extends StatelessWidget {
+  final String currentTheme;
+  final Function(String) onThemeChanged;
+
+  const ThemeMenuButton({
+    super.key,
+    required this.currentTheme,
+    required this.onThemeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: Icon(
+        CupertinoIcons.paintbrush,
+        color: Colors.white.withValues(alpha: 0.95),
+      ),
+      tooltip: 'Change Theme',
+      onSelected: onThemeChanged,
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: 'seez',
           child: Row(
             children: [
               Icon(
-                widget.currentTheme == 'seez' ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
+                currentTheme == 'seez' ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
                 size: 16,
                 color: SeezTheme.primaryBrown,
               ),
@@ -88,7 +332,7 @@ class _DocumentationScreenState extends State<DocumentationScreen>
           child: Row(
             children: [
               Icon(
-                widget.currentTheme == 'light' ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
+                currentTheme == 'light' ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
                 size: 16,
                 color: SeezTheme.primaryBrown,
               ),
@@ -102,7 +346,7 @@ class _DocumentationScreenState extends State<DocumentationScreen>
           child: Row(
             children: [
               Icon(
-                widget.currentTheme == 'dark' ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
+                currentTheme == 'dark' ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
                 size: 16,
                 color: SeezTheme.primaryBrown,
               ),
@@ -112,230 +356,6 @@ class _DocumentationScreenState extends State<DocumentationScreen>
           ),
         ),
       ],
-    ).then((value) {
-      if (value != null) {
-        widget.onThemeChanged(value);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          // Animated Gradient Header
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  SeezTheme.primaryBrown,
-                  SeezTheme.mediumBrownBorder,
-                  SeezTheme.primaryBrown.withValues(alpha: 0.8),
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                // Animated Floating Circles
-                AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    final offset1 = _animationController.value * 15;
-                    final offset2 = (1 - _animationController.value) * 20;
-                    final offset3 = _animationController.value * 25;
-
-                    return Stack(
-                      children: [
-                        // Circle 1
-                        Positioned(
-                          left: 80 + offset1,
-                          top: -20,
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  const Color(0xFF8B4513).withValues(alpha: 0.3),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Circle 2
-                        Positioned(
-                          right: 150 + offset2,
-                          top: -30,
-                          child: Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  const Color(0xFF8B2500).withValues(alpha: 0.25),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Circle 3
-                        Positioned(
-                          left: 300 + offset3,
-                          top: -10,
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  SeezTheme.darkBrownText.withValues(alpha: 0.2),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-                // Header Content
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      // App Title
-                      Text(
-                        'Rome Doc Viewer',
-                        style: GoogleFonts.pacifico(
-                          color: const Color(0xFFFAF5ED),
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            const Shadow(
-                              offset: Offset(0, 2),
-                              blurRadius: 4,
-                              color: Colors.black38,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const Spacer(),
-
-                      // Root Path Display
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                CupertinoIcons.folder,
-                                size: 14,
-                                color: Colors.white.withValues(alpha: 0.95),
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  widget.docsRootPath.split('/').last,
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 16),
-
-                      // Change Folder Button
-                      IconButton(
-                        icon: Icon(
-                          CupertinoIcons.folder_open,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                        onPressed: widget.onChangeFolder,
-                        tooltip: 'Change Folder',
-                      ),
-
-                      // Theme Selector Button
-                      IconButton(
-                        icon: Icon(
-                          CupertinoIcons.paintbrush,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                        onPressed: _showThemeMenu,
-                        tooltip: 'Change Theme',
-                      ),
-
-                      // Style Settings Button
-                      IconButton(
-                        icon: Icon(
-                          CupertinoIcons.settings,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                        onPressed: _showStyleSettings,
-                        tooltip: 'Style Settings',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Main Content Area with Sidebar
-          Expanded(
-            child: Row(
-              children: [
-                // Sidebar Area
-                SidebarArea(
-                  currentTheme: widget.currentTheme,
-                ),
-
-                // Content Area
-                Expanded(
-                  child: ContentArea(
-                    markdownStyles: widget.markdownStyles,
-                    currentTheme: widget.currentTheme,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

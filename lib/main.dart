@@ -1,5 +1,6 @@
 import 'package:doc_viewer_app/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/infrastructure/services/preferences_service.dart';
+import 'package:doc_viewer_app/infrastructure/services/annotation_service.dart';
 import 'package:doc_viewer_app/presentation/theme/seez_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -93,6 +94,9 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
                     datasource: FilesystemDocumentationDatasource(
                       docsRootPath: _selectedDocsPath!,
                     ),
+                  ),
+                  annotationService: AnnotationService(
+                    docsRootPath: _selectedDocsPath!,
                   ),
                 )..add(const LoadFileTreeEvent()),
                 child: DocumentationScreen(
