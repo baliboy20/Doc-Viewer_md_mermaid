@@ -104,13 +104,31 @@ class _ContentAreaState extends State<ContentArea> {
         data: 'ID: ${annotation.id}, Anchor: "${annotation.anchorText}"',
       );
 
-      // Use Flutter's built-in ensureVisible which handles all positioning automatically
+      // Use Flutter's built-in ensureVisible with precise alignment
+      // alignment: 0.0 puts the target at the top of the viewport
+      // We use 0.15 to leave a small margin at the top for context
       Scrollable.ensureVisible(
         context,
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
-        alignment: 0.2, // Position at 20% from top to show context above
+        alignment: 0.0, // Position at top of viewport for maximum accuracy
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
       );
+
+      // After scrolling, add a small adjustment to account for padding
+      Future.delayed(const Duration(milliseconds: 550), () {
+        if (_scrollController.hasClients) {
+          final currentOffset = _scrollController.offset;
+          // Scroll back up slightly to show some context above
+          final adjustedOffset = (currentOffset - 80).clamp(0.0, _scrollController.position.maxScrollExtent);
+
+          _scrollController.animateTo(
+            adjustedOffset,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
 
       AppLogger.success(
         'Successfully scrolled to annotation',
