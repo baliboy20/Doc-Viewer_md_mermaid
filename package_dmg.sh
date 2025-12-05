@@ -5,18 +5,24 @@
 
 set -e  # Exit on error
 
+# Extract version from pubspec.yaml
+VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: *//' | sed 's/+.*//')
+
+# Extract version name and product name from AppInfo.xcconfig
+APPINFO_CONFIG="macos/Runner/Configs/AppInfo.xcconfig"
+VERSION_NAME=$(grep "^VERSION_NAME" "$APPINFO_CONFIG" | sed 's/VERSION_NAME = *//' | sed 's/ *$//')
+PRODUCT_NAME=$(grep "^PRODUCT_NAME" "$APPINFO_CONFIG" | sed 's/PRODUCT_NAME = *//' | sed 's/ *$//')
+
 # Configuration
-APP_NAME="DocViewer"
-APP_BUNDLE_NAME="DocViewer"
+APP_NAME="$PRODUCT_NAME"
+APP_BUNDLE_NAME="$PRODUCT_NAME"
 BUILD_DIR="build/macos/Build/Products/Release"
 APP_BUNDLE="$BUILD_DIR/$APP_BUNDLE_NAME.app"
 DMG_DIR="build/dmg"
 
-# Extract version from pubspec.yaml
-VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: *//' | sed 's/+.*//')
-VERSION_NAME="Barbados"
-
-DMG_NAME="${APP_NAME}_${VERSION}_${VERSION_NAME}.dmg"
+# Create DMG filename (replace spaces with underscores)
+DMG_BASE_NAME=$(echo "$APP_NAME" | sed 's/ /_/g')
+DMG_NAME="${DMG_BASE_NAME}_${VERSION}_${VERSION_NAME}.dmg"
 VOLUME_NAME="$APP_NAME $VERSION Installer"
 ICON_FILE="$BUILD_DIR/$APP_BUNDLE_NAME.app/Contents/Resources/AppIcon.icns"
 
@@ -33,6 +39,27 @@ echo ""
 echo -e "App: ${YELLOW}$APP_NAME${NC}"
 echo -e "Version: ${YELLOW}$VERSION${NC}"
 echo -e "Version Name: ${YELLOW}$VERSION_NAME${NC}"
+echo ""
+
+# Sync version information to macOS Info.plist via AppInfo.xcconfig
+echo -e "${GREEN}Syncing version information...${NC}"
+echo -e "  Updating AppInfo.xcconfig with version ${YELLOW}$VERSION${NC} (${YELLOW}$VERSION_NAME${NC})"
+
+# Verify AppInfo.xcconfig has the correct MARKETING_VERSION
+if ! grep -q "^MARKETING_VERSION" "$APPINFO_CONFIG"; then
+    echo -e "${YELLOW}Warning: MARKETING_VERSION not found in AppInfo.xcconfig${NC}"
+    echo -e "${YELLOW}The About dialog may not display the version name correctly${NC}"
+fi
+
+# Verify the xcconfig files are included in Debug and Release configs
+if ! grep -q "AppInfo.xcconfig" "macos/Runner/Configs/Debug.xcconfig"; then
+    echo -e "${YELLOW}Warning: AppInfo.xcconfig not included in Debug.xcconfig${NC}"
+fi
+
+if ! grep -q "AppInfo.xcconfig" "macos/Runner/Configs/Release.xcconfig"; then
+    echo -e "${YELLOW}Warning: AppInfo.xcconfig not included in Release.xcconfig${NC}"
+fi
+
 echo ""
 
 # Build the macOS release binary

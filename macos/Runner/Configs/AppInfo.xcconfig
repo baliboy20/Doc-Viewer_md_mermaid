@@ -5,13 +5,16 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = DocViewer
+PRODUCT_NAME = Rome Doc Viewer
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.docViewerApp
+PRODUCT_BUNDLE_IDENTIFIER = com.florence.docViewerApp
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 Florence. All rights reserved.
 
 // Version name (code name)
-VERSION_NAME = Barbados
+VERSION_NAME = Jamaica Rum
+
+// Full version string with code name
+MARKETING_VERSION = $(FLUTTER_BUILD_NAME) "$(VERSION_NAME)"

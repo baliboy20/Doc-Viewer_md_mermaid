@@ -325,7 +325,15 @@
                 </menuItem>
                 <menuItem title="Help" id="EPT-qC-fAb">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Help" systemMenu="help" id="rJ0-wn-3NY"/>
+                    <menu key="submenu" title="Help" systemMenu="help" id="rJ0-wn-3NY">
+                        <items>
+                            <menuItem title="Florence Documentation Help" keyEquivalent="?" id="FhJ-Pk-xhZ">
+                                <connections>
+                                    <action selector="showHelp:" target="Voe-Tx-rLC" id="5Hz-vx-SmO"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
                 </menuItem>
             </items>
             <point key="canvasLocation" x="142" y="-258"/>

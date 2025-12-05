@@ -2,7 +2,9 @@ import 'package:doc_viewer_app/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/infrastructure/services/preferences_service.dart';
 import 'package:doc_viewer_app/infrastructure/services/annotation_service.dart';
 import 'package:doc_viewer_app/presentation/theme/seez_theme.dart';
+import 'package:doc_viewer_app/presentation/widgets/help_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'application/bloc/documentation_bloc.dart';
 import 'application/bloc/documentation_event.dart';
@@ -28,11 +30,32 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
   String _currentTheme = 'seez';
   MarkdownStylePreferences _markdownStyles = const MarkdownStylePreferences();
   final PreferencesService _prefsService = PreferencesService();
+  static const MethodChannel _menuChannel = MethodChannel('com.florence.docs/menu');
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    _setupMenuChannel();
+  }
+
+  void _setupMenuChannel() {
+    _menuChannel.setMethodCallHandler((call) async {
+      if (call.method == 'showHelp') {
+        _showHelpDialog();
+      }
+    });
+  }
+
+  void _showHelpDialog() {
+    final context = _navigatorKey.currentContext;
+    if (context != null) {
+      showDialog(
+        context: context,
+        builder: (context) => const HelpDialog(),
+      );
+    }
   }
 
   Future<void> _loadPreferences() async {
@@ -81,6 +104,7 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOut,
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'Florence Documentation',
         debugShowCheckedModeBanner: false,
         theme: currentThemeData,

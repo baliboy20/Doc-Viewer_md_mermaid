@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       setState(() {
-        _versionInfo = 'v${packageInfo.version} "Barbados"';
+        _versionInfo = 'v${packageInfo.version}';
       });
     } catch (e) {
       AppLogger.error('Failed to load version info', tag: 'Splash', error: e);
