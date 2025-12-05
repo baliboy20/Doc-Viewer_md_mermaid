@@ -129,7 +129,8 @@ class MarkdownElementIndexer {
       final trimmed = line.trim();
 
       // Skip existing annotation markers - preserve them as-is
-      if (trimmed.startsWith('[](#annotation-marker-')) {
+      if (trimmed.startsWith('[📌](#annotation-marker-') ||
+          trimmed.startsWith('[](#annotation-marker-')) {
         result.writeln(line);
         inParagraph = false; // Annotation marker breaks paragraph flow
         continue;

@@ -282,8 +282,9 @@ class AnnotationParser {
     final lines = content.split('\n');
     final cleanedLines = lines.where((line) {
       final trimmed = line.trim();
-      // Match patterns: [](#annotation-marker-xxx) or [](#ln-X)
-      return !trimmed.startsWith('[](#annotation-marker-') &&
+      // Match patterns: [📌](#annotation-marker-xxx), [](#annotation-marker-xxx), or [](#ln-X)
+      return !trimmed.startsWith('[📌](#annotation-marker-') &&
+             !trimmed.startsWith('[](#annotation-marker-') &&
              !trimmed.startsWith('[](#ln-');
     }).toList();
     return cleanedLines.join('\n');
@@ -303,11 +304,11 @@ class AnnotationParser {
 
       // Check if this line has annotations
       if (lineToAnnotations.containsKey(lineNum)) {
-        // Add invisible markdown link markers for all annotations on this line
+        // Add markdown link markers with bookmark icon for all annotations on this line
         for (final annotationId in lineToAnnotations[lineNum]!) {
-          // Markdown link with empty text and anchor href
-          // Renders as: <a href="#annotation-marker-xxx"></a> (invisible)
-          result.writeln('[](#annotation-marker-$annotationId)');
+          // Markdown link with bookmark emoji and anchor href
+          // Renders as: <a href="#annotation-marker-xxx">📌</a> (visible icon)
+          result.writeln('[📌](#annotation-marker-$annotationId)');
         }
       }
 

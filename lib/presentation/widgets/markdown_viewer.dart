@@ -177,7 +177,6 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
           ),
           'a': AnnotationMarkerBuilder(
             annotationKeys: widget.annotationKeys ?? {},
-            accentColor: _accentColor,
           ),
         },
       ),
@@ -380,14 +379,12 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
   }
 }
 
-/// Custom builder for anchor tags to render annotation markers with icons
+/// Custom builder for anchor tags to attach GlobalKeys to annotation markers
 class AnnotationMarkerBuilder extends MarkdownElementBuilder {
   final Map<String, GlobalKey> annotationKeys;
-  final Color accentColor;
 
   AnnotationMarkerBuilder({
     required this.annotationKeys,
-    required this.accentColor,
   });
 
   @override
@@ -404,25 +401,24 @@ class AnnotationMarkerBuilder extends MarkdownElementBuilder {
           data: 'ID: $annotationId, href: $href',
         );
 
-        // Get or create GlobalKey for this annotation
+        // Get GlobalKey for this annotation
         final key = annotationKeys[annotationId];
 
         if (key != null) {
           AppLogger.info(
-            'Rendering annotation marker icon',
+            'Attaching GlobalKey to annotation marker',
             tag: 'AnnotationMarkerBuilder',
             data: 'ID: $annotationId',
           );
 
-          // Return a bold crimson bookmark icon to mark the annotation position
-          // This helps users see exactly where annotations are anchored
-          return Container(
+          // Return a Text widget with the emoji and the GlobalKey attached
+          // The emoji (📌) is already in the markdown as [📌](#annotation-marker-xxx)
+          return Text(
+            element.textContent,
             key: key,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            child: const Icon(
-              Icons.bookmark,
-              size: 18,
-              color: Color(0xFFDC143C), // Bold Crimson
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.0,
             ),
           );
         } else {
@@ -435,7 +431,7 @@ class AnnotationMarkerBuilder extends MarkdownElementBuilder {
       }
     }
 
-    // Return null for other HTML elements (use default rendering)
+    // Return null for other anchor tags (use default rendering)
     return null;
   }
 }
