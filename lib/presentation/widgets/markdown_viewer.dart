@@ -177,6 +177,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
           ),
           'html': HtmlCommentBuilder(
             annotationKeys: widget.annotationKeys ?? {},
+            accentColor: _accentColor,
           ),
         },
       ),
@@ -382,9 +383,11 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
 /// Custom builder for HTML elements to attach GlobalKeys to annotation markers
 class HtmlCommentBuilder extends MarkdownElementBuilder {
   final Map<String, GlobalKey> annotationKeys;
+  final Color accentColor;
 
   HtmlCommentBuilder({
     required this.annotationKeys,
+    required this.accentColor,
   });
 
   @override
@@ -411,14 +414,16 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
             data: 'ID: $annotationId',
           );
 
-          // Return an invisible widget with the key attached
-          // Using a tiny size (1x1) so it gets a proper position in render tree
-          // but remains virtually invisible
-          return SizedBox(
+          // Return a small visible icon to mark the annotation position
+          // This helps users see exactly where annotations are anchored
+          return Container(
             key: key,
-            width: 1,
-            height: 1,
-            child: Container(color: Colors.transparent),
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: Icon(
+              Icons.bookmark,
+              size: 14,
+              color: accentColor.withValues(alpha: 0.6),
+            ),
           );
         } else {
           AppLogger.warning(
