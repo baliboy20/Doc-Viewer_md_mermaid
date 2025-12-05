@@ -18,6 +18,7 @@ class MarkdownViewer extends StatefulWidget {
   final String currentTheme;
   final Function(String selectedText, BuildContext context)? onTextSelected;
   final List<dynamic>? annotations; // List of annotations for anchor injection
+  final Map<String, GlobalKey>? annotationKeys; // GlobalKeys for scroll targeting
 
   const MarkdownViewer({
     super.key,
@@ -26,6 +27,7 @@ class MarkdownViewer extends StatefulWidget {
     required this.currentTheme,
     this.onTextSelected,
     this.annotations,
+    this.annotationKeys,
   });
 
   @override
@@ -50,8 +52,54 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
         : AppTheme.primaryBlue;
   }
 
+  /// Inject HTML comment markers at annotation positions
+  String _injectAnnotationMarkers(String content) {
+    if (widget.annotations == null || widget.annotations!.isEmpty) {
+      return content;
+    }
+
+    final lines = content.split('\n');
+    final Map<int, List<String>> lineMarkers = {};
+
+    // Group annotations by line number
+    for (var annotation in widget.annotations!) {
+      // Search for anchor text to find exact line
+      final anchorLower = annotation.anchorText.toLowerCase().trim();
+      int? foundLine;
+
+      for (int i = 0; i < lines.length; i++) {
+        final lineLower = lines[i].toLowerCase();
+        if (lineLower.contains(anchorLower)) {
+          foundLine = i;
+          break;
+        }
+      }
+
+      if (foundLine != null) {
+        lineMarkers.putIfAbsent(foundLine, () => []);
+        lineMarkers[foundLine]!.add(annotation.id);
+      }
+    }
+
+    // Inject markers into content
+    final result = StringBuffer();
+    for (int i = 0; i < lines.length; i++) {
+      // Add any markers for this line
+      if (lineMarkers.containsKey(i)) {
+        for (var annotationId in lineMarkers[i]!) {
+          result.writeln('<!-- ANNOTATION_KEY=$annotationId -->');
+        }
+      }
+      result.writeln(lines[i]);
+    }
+
+    return result.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final contentWithMarkers = _injectAnnotationMarkers(widget.content);
+
     return SelectionArea(
       onSelectionChanged: (selectedContent) {
         setState(() {
@@ -94,7 +142,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
         );
       },
       child: MarkdownBody(
-        data: widget.content,
+        data: contentWithMarkers,
         selectable: false, // Disable MarkdownBody's selection, use SelectionArea instead
         styleSheet: _buildMarkdownStyleSheet(context),
         onTapLink: (text, href, title) {
@@ -106,6 +154,9 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
           'code': CodeElementBuilder(
             currentTheme: widget.currentTheme,
             stylePreferences: widget.stylePreferences,
+          ),
+          'html': HtmlCommentBuilder(
+            annotationKeys: widget.annotationKeys ?? {},
           ),
         },
       ),
@@ -305,6 +356,39 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
+  }
+}
+
+/// Custom builder for HTML comments to attach GlobalKeys to annotation markers
+class HtmlCommentBuilder extends MarkdownElementBuilder {
+  final Map<String, GlobalKey> annotationKeys;
+
+  HtmlCommentBuilder({
+    required this.annotationKeys,
+  });
+
+  @override
+  Widget? visitElementAfter(element, TextStyle? preferredStyle) {
+    // Check if this is an HTML comment with annotation marker
+    final comment = element.textContent.trim();
+    if (comment.startsWith('ANNOTATION_KEY=')) {
+      final annotationId = comment.substring('ANNOTATION_KEY='.length).trim();
+
+      // Get or create GlobalKey for this annotation
+      final key = annotationKeys[annotationId];
+
+      if (key != null) {
+        // Return an invisible widget with the key attached
+        return Container(
+          key: key,
+          height: 0,
+          width: 0,
+        );
+      }
+    }
+
+    // Return null for other HTML comments (will be ignored)
+    return const SizedBox.shrink();
   }
 }
 

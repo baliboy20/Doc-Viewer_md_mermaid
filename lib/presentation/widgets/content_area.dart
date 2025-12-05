@@ -56,122 +56,71 @@ class _ContentAreaState extends State<ContentArea> {
   }
 
   void _scrollToAnnotation(annotation) {
-    // Use anchor text search for accurate positioning
-    if (annotation.anchorText.isEmpty) {
-      AppLogger.warning(
-        'Cannot scroll - annotation has no anchor text',
-        tag: 'ContentArea',
-        data: 'ID: ${annotation.id}',
-      );
-      return;
-    }
-
-    // Get the current state to access content
-    final bloc = context.read<DocumentationBloc>();
-    final state = bloc.state;
-
-    if (state is! DocumentationLoaded || state.currentContent == null) {
-      return;
-    }
-
-    // Find the exact position by searching for anchor text in content
-    final content = state.currentContent!;
-    final lines = content.split('\n');
-    int? foundLine;
-    int charPositionInLine = 0;
-
-    // Search for the anchor text (case-insensitive, find first occurrence)
-    final anchorLower = annotation.anchorText.toLowerCase().trim();
-    for (int i = 0; i < lines.length; i++) {
-      final lineLower = lines[i].toLowerCase();
-      final index = lineLower.indexOf(anchorLower);
-      if (index >= 0) {
-        foundLine = i + 1; // 1-indexed
-        charPositionInLine = index;
-        break;
-      }
-    }
-
-    final targetLine = foundLine ?? annotation.lineNumber ?? 1;
-
     AppLogger.debug(
-      'Searching for annotation anchor',
+      'Attempting to scroll to annotation',
       tag: 'ContentArea',
-      data: 'Anchor: "${annotation.anchorText}", Found at line: $foundLine (char pos: $charPositionInLine), Original line: ${annotation.lineNumber}',
+      data: 'ID: ${annotation.id}, Anchor: "${annotation.anchorText}"',
     );
 
-    // Calculate scroll position with improved accuracy
-    final baseFontSize = widget.markdownStyles.baseFontSize;
-    final baseLineHeight = baseFontSize * 1.6;
+    // Get the GlobalKey for this annotation
+    final key = _getAnnotationKey(annotation.id);
 
-    // Calculate cumulative height up to target line
-    double targetPosition = 0;
+    // Wait for the next frame to ensure widgets are built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        // Get the RenderBox from the GlobalKey
+        final RenderBox? renderBox = key.currentContext?.findRenderObject() as RenderBox?;
 
-    for (int i = 0; i < targetLine - 1; i++) {
-      if (i >= lines.length) break;
+        if (renderBox != null) {
+          // Get the position of the annotation marker relative to the scroll view
+          final RenderObject? scrollViewRenderObject =
+              _scrollController.position.context.storageContext.findRenderObject();
 
-      final line = lines[i].trim();
+          if (scrollViewRenderObject is RenderBox) {
+            // Calculate the offset of the annotation marker
+            final offset = renderBox.localToGlobal(Offset.zero, ancestor: scrollViewRenderObject);
 
-      // Calculate height based on line type
-      if (line.isEmpty) {
-        // Empty lines - reduced spacing
-        targetPosition += baseLineHeight * 0.3;
-      } else if (line.startsWith('######')) {
-        // H6 header
-        targetPosition += baseFontSize * 1.2 * 1.6 + 16; // font size + padding
-      } else if (line.startsWith('#####')) {
-        // H5 header
-        targetPosition += baseFontSize * 1.3 * 1.6 + 18;
-      } else if (line.startsWith('####')) {
-        // H4 header
-        targetPosition += baseFontSize * 1.5 * 1.6 + 22;
-      } else if (line.startsWith('###')) {
-        // H3 header
-        targetPosition += baseFontSize * 1.8 * 1.6 + 26;
-      } else if (line.startsWith('##')) {
-        // H2 header
-        targetPosition += baseFontSize * 2.3 * 1.6 + 32;
-      } else if (line.startsWith('#')) {
-        // H1 header
-        targetPosition += baseFontSize * 2.8 * 1.6 + 40;
-      } else if (line.startsWith('```')) {
-        // Code block marker - minimal height
-        targetPosition += baseLineHeight * 0.5;
-      } else if (line.startsWith('>')) {
-        // Blockquote
-        targetPosition += baseLineHeight * 1.1;
-      } else if (line.startsWith('- ') || line.startsWith('* ') || line.startsWith('+ ')) {
-        // List item
-        targetPosition += baseLineHeight * 1.0;
-      } else {
-        // Regular paragraph text - account for wrapping
-        final lineLength = line.length;
-        final estimatedLines = (lineLength / 80).ceil().toDouble();
-        targetPosition += baseLineHeight * estimatedLines.clamp(1.0, 3.0);
+            // Calculate target scroll position
+            // Subtract some offset to show context above the annotation
+            final targetPosition = _scrollController.offset + offset.dy - 100;
+
+            // Clamp to valid scroll range
+            final maxScroll = _scrollController.position.maxScrollExtent;
+            final clampedPosition = targetPosition.clamp(0.0, maxScroll);
+
+            _scrollController.animateTo(
+              clampedPosition,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOut,
+            );
+
+            AppLogger.info(
+              'Scrolled to annotation using GlobalKey',
+              tag: 'ContentArea',
+              data: 'ID: ${annotation.id}, Position: ${clampedPosition.toStringAsFixed(1)}',
+            );
+          } else {
+            AppLogger.warning(
+              'Could not find scroll view RenderBox',
+              tag: 'ContentArea',
+              data: 'ID: ${annotation.id}',
+            );
+          }
+        } else {
+          AppLogger.warning(
+            'GlobalKey context not available yet',
+            tag: 'ContentArea',
+            data: 'ID: ${annotation.id}, Key: $key',
+          );
+        }
+      } catch (e) {
+        AppLogger.error(
+          'Error scrolling to annotation',
+          tag: 'ContentArea',
+          data: 'ID: ${annotation.id}, Error: $e',
+        );
       }
-    }
-
-    // Add container padding
-    targetPosition += 24;
-
-    // Subtract a small offset to show some context above
-    targetPosition -= baseLineHeight;
-
-    // Clamp to valid scroll range
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final clampedPosition = targetPosition.clamp(0.0, maxScroll);
-
-    _scrollController.animateTo(
-      clampedPosition,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-
-    AppLogger.info(
-      'Scrolled to annotation',
-      tag: 'ContentArea',
-      data: 'ID: ${annotation.id}, Target line: $targetLine, Calculated position: ${targetPosition.toStringAsFixed(1)}, Clamped: ${clampedPosition.toStringAsFixed(1)}',
-    );
+    });
   }
 
   Color get _backgroundColor {
@@ -368,6 +317,11 @@ class _ContentAreaState extends State<ContentArea> {
       );
     }
 
+    // Ensure GlobalKeys exist for all annotations
+    for (var annotation in state.annotations) {
+      _getAnnotationKey(annotation.id);
+    }
+
     // Default to markdown viewer for .md files
     return SingleChildScrollView(
       key: ValueKey(filePath),
@@ -378,6 +332,7 @@ class _ContentAreaState extends State<ContentArea> {
         stylePreferences: widget.markdownStyles,
         currentTheme: widget.currentTheme,
         annotations: state.annotations,
+        annotationKeys: _annotationKeys,
         onTextSelected: (selectedText, widgetContext) {
           _showAddAnnotationDialog(context, state, selectedText: selectedText);
         },
