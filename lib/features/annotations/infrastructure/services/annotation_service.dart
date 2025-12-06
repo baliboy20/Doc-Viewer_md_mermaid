@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:uuid/uuid.dart';
 import 'package:doc_viewer_app/features/annotations/domain/entities/annotation.dart';
-import 'annotation_parser.dart';
+import 'package:doc_viewer_app/features/annotations/infrastructure/services/annotation_parser.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 /// Service for managing annotations on markdown files

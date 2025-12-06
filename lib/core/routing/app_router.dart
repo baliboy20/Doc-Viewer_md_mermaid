@@ -10,7 +10,7 @@ import 'package:doc_viewer_app/features/documentation/application/bloc/documenta
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';
 import 'package:doc_viewer_app/features/documentation/infrastructure/repositories/documentation_repository_impl.dart';
 import 'package:doc_viewer_app/features/documentation/infrastructure/datasources/filesystem_documentation_datasource.dart';
-import '../../infrastructure/services/annotation_service.dart';
+import 'package:doc_viewer_app/features/annotations/infrastructure/services/annotation_service.dart';
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 
 import 'route_paths.dart';
