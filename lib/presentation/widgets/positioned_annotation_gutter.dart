@@ -110,8 +110,37 @@ class PositionedAnnotationGutter extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Tooltip(
-                      message: '${annotation.anchorText}\n\n${annotation.content}',
+                      message: annotation.anchorText,
                       preferBelow: false,
+                      waitDuration: const Duration(milliseconds: 300),
+                      decoration: BoxDecoration(
+                        color: currentTheme == 'dark'
+                            ? const Color(0xFF2D2D2D)
+                            : const Color(0xFF424242),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 2,
+                          ),
+                        ],
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      textStyle: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                        height: 1.4,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       child: GestureDetector(
                         onTap: () => onAnnotationTap(annotation),
                         child: MouseRegion(
