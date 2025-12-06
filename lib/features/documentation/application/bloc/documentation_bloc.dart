@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:doc_viewer_app/domain/entities/annotation.dart';
+import 'package:doc_viewer_app/features/annotations/domain/entities/annotation.dart';
 import 'package:doc_viewer_app/features/documentation/domain/repositories/documentation_repository.dart';
 import 'package:doc_viewer_app/infrastructure/services/annotation_service.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';

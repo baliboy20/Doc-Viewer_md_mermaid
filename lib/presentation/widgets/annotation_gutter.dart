@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../domain/entities/annotation.dart';
+import 'package:doc_viewer_app/features/annotations/domain/entities/annotation.dart';
 
 /// Left-hand vertical gutter showing annotation markers
 class AnnotationGutter extends StatelessWidget {
