@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Will be migrated to features/ in Week 2-3
-import '../../presentation/screens/splash_screen.dart';
-import '../../presentation/screens/documentation_screen.dart';
+import 'package:doc_viewer_app/features/documentation/presentation/screens/splash_screen.dart';
+import 'package:doc_viewer_app/features/documentation/presentation/screens/documentation_screen.dart';
 
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_bloc.dart';
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';

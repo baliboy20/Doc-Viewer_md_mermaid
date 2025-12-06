@@ -9,10 +9,10 @@ import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_s
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import 'markdown_viewer.dart';
 import 'mermaid_file_viewer.dart';
-import 'annotation_dialog.dart';
-import 'annotations_sidebar.dart';
-import 'annotation_gutter.dart';
-import 'positioned_annotation_gutter.dart';
+import 'package:doc_viewer_app/presentation/widgets/annotation_dialog.dart';
+import 'package:doc_viewer_app/presentation/widgets/annotations_sidebar.dart';
+import 'package:doc_viewer_app/presentation/widgets/annotation_gutter.dart';
+import 'package:doc_viewer_app/presentation/widgets/positioned_annotation_gutter.dart';
 import 'package:doc_viewer_app/core/theme/seez_theme.dart';
 import 'package:doc_viewer_app/core/theme/app_theme.dart';
 
