@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../theme/seez_theme.dart';
-import '../theme/app_theme.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/app_theme.dart';
 import 'mermaid_renderer.dart';
 
 /// Viewer for standalone .mermaid files

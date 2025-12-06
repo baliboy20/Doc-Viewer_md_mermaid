@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
 import '../widgets/sidebar_area.dart';
 import '../widgets/content_area.dart';
 import '../widgets/style_settings_dialog.dart';

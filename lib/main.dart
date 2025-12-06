@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'domain/entities/markdown_style_preferences.dart';
-import 'infrastructure/services/preferences_service.dart';
-import 'presentation/theme/seez_theme.dart';
-import 'presentation/theme/app_theme.dart';
+import 'core/utils/preferences_service.dart';
+import 'core/theme/seez_theme.dart';
+import 'core/theme/app_theme.dart';
 import 'presentation/widgets/help_dialog.dart';
 import 'core/routing/app_router.dart';
 

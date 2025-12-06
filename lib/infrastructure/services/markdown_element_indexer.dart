@@ -1,5 +1,5 @@
 import 'package:markdown/markdown.dart' as md;
-import 'app_logger.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 /// Pre-processes markdown to inject invisible element index markers
 class MarkdownElementIndexer {

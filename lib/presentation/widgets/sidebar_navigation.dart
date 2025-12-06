@@ -8,9 +8,9 @@ import '../../application/bloc/documentation_bloc.dart';
 import '../../application/bloc/documentation_event.dart';
 import '../../application/bloc/documentation_state.dart';
 import '../../domain/entities/file_node.dart';
-import '../../infrastructure/services/app_logger.dart';
-import '../theme/seez_theme.dart';
-import '../theme/app_theme.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/app_theme.dart';
 
 /// Resizable sidebar navigation showing file tree
 /// Features: hover effects, chevron rotation, drag-to-resize, context menus

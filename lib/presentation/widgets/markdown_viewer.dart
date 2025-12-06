@@ -6,10 +6,10 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import '../../domain/entities/markdown_style_preferences.dart';
-import '../../infrastructure/services/app_logger.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import '../../infrastructure/services/markdown_element_indexer.dart';
-import '../theme/seez_theme.dart';
-import '../theme/app_theme.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/app_theme.dart';
 import 'mermaid_diagram.dart';
 
 /// Markdown viewer with custom styling and code highlighting

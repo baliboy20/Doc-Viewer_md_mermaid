@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/annotation.dart';
 import 'annotation_parser.dart';
-import 'app_logger.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 /// Service for managing annotations on markdown files
 class AnnotationService {

@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import '../theme/seez_theme.dart';
-import '../theme/app_theme.dart';
-import '../../infrastructure/services/app_logger.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/app_theme.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 /// Renders Mermaid diagrams using WebView and mermaid.js
 class MermaidRenderer extends StatefulWidget {

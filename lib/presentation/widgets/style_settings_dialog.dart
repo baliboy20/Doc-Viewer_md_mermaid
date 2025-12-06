@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../domain/entities/markdown_style_preferences.dart';
-import '../theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
 
 /// Dialog for customizing markdown rendering preferences
 class StyleSettingsDialog extends StatefulWidget {

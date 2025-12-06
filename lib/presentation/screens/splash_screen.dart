@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import '../theme/seez_theme.dart';
-import '../../infrastructure/services/app_logger.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 /// Splash screen for selecting documentation directory
 /// Supports both file picker and manual path entry modes

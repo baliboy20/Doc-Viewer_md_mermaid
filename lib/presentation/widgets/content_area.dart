@@ -6,15 +6,15 @@ import '../../application/bloc/documentation_bloc.dart';
 import '../../application/bloc/documentation_event.dart';
 import '../../application/bloc/documentation_state.dart';
 import '../../domain/entities/markdown_style_preferences.dart';
-import '../../infrastructure/services/app_logger.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import 'markdown_viewer.dart';
 import 'mermaid_file_viewer.dart';
 import 'annotation_dialog.dart';
 import 'annotations_sidebar.dart';
 import 'annotation_gutter.dart';
 import 'positioned_annotation_gutter.dart';
-import '../theme/seez_theme.dart';
-import '../theme/app_theme.dart';
+import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/theme/app_theme.dart';
 
 /// Content area with animated transitions for markdown display
 class ContentArea extends StatefulWidget {
