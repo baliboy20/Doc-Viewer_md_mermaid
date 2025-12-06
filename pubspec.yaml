@@ -50,6 +50,9 @@ dependencies:
   # Secure Storage (Phase 2 Git Integration)
   flutter_secure_storage: ^9.0.0
 
+  # Git Operations (Phase 2 Git Integration)
+  git2dart: ^0.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
