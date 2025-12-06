@@ -1,18 +1,13 @@
-import 'package:doc_viewer_app/domain/entities/markdown_style_preferences.dart';
-import 'package:doc_viewer_app/infrastructure/services/preferences_service.dart';
-import 'package:doc_viewer_app/infrastructure/services/annotation_service.dart';
-import 'package:doc_viewer_app/presentation/theme/seez_theme.dart';
-import 'package:doc_viewer_app/presentation/widgets/help_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'application/bloc/documentation_bloc.dart';
-import 'application/bloc/documentation_event.dart';
-import 'infrastructure/repositories/documentation_repository_impl.dart';
-import 'infrastructure/datasources/filesystem_documentation_datasource.dart';
-import 'presentation/screens/documentation_screen.dart';
-import 'presentation/screens/splash_screen.dart';
+import 'package:go_router/go_router.dart';
+
+import 'domain/entities/markdown_style_preferences.dart';
+import 'infrastructure/services/preferences_service.dart';
+import 'presentation/theme/seez_theme.dart';
 import 'presentation/theme/app_theme.dart';
+import 'presentation/widgets/help_dialog.dart';
+import 'core/routing/app_router.dart';
 
 void main() {
   runApp(const FlorenceDocsApp());
@@ -26,113 +21,94 @@ class FlorenceDocsApp extends StatefulWidget {
 }
 
 class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
-  String? _selectedDocsPath;
-  String _currentTheme = 'seez';
-  MarkdownStylePreferences _markdownStyles = const MarkdownStylePreferences();
+  // State notifiers for routing
+  final ValueNotifier<String?> _selectedDocsPath = ValueNotifier(null);
+  final ValueNotifier<String> _currentTheme = ValueNotifier('seez');
+  final ValueNotifier<MarkdownStylePreferences> _markdownStyles =
+      ValueNotifier(const MarkdownStylePreferences());
+
   final PreferencesService _prefsService = PreferencesService();
-  static const MethodChannel _menuChannel = MethodChannel('com.florence.docs/menu');
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  static const MethodChannel _menuChannel =
+      MethodChannel('com.florence.docs/menu');
+
+  late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
     _setupMenuChannel();
+
+    // Create router with state notifiers
+    _router = AppRouter.createRouter(
+      selectedDocsPath: _selectedDocsPath,
+      currentTheme: _currentTheme,
+      markdownStyles: _markdownStyles,
+    );
+  }
+
+  @override
+  void dispose() {
+    _selectedDocsPath.dispose();
+    _currentTheme.dispose();
+    _markdownStyles.dispose();
+    super.dispose();
   }
 
   void _setupMenuChannel() {
     _menuChannel.setMethodCallHandler((call) async {
       if (call.method == 'showHelp') {
-        _showHelpDialog();
+        // Get current context from router
+        final context = _router.routerDelegate.navigatorKey.currentContext;
+        if (context != null) {
+          showDialog(
+            context: context,
+            builder: (context) => const HelpDialog(),
+          );
+        }
       }
     });
-  }
-
-  void _showHelpDialog() {
-    final context = _navigatorKey.currentContext;
-    if (context != null) {
-      showDialog(
-        context: context,
-        builder: (context) => const HelpDialog(),
-      );
-    }
   }
 
   Future<void> _loadPreferences() async {
     final theme = await _prefsService.getTheme();
     final styles = await _prefsService.getMarkdownStyles();
-    setState(() {
-      _currentTheme = theme;
-      _markdownStyles = styles;
-    });
-  }
 
-  void _onDirectorySelected(String path) {
-    setState(() {
-      _selectedDocsPath = path;
-    });
-  }
+    _currentTheme.value = theme;
+    _markdownStyles.value = styles;
 
-  void _changeFolder() {
-    setState(() {
-      _selectedDocsPath = null;
+    // Save preferences when they change
+    _currentTheme.addListener(() {
+      _prefsService.setTheme(_currentTheme.value);
     });
-  }
-
-  void _changeTheme(String theme) {
-    setState(() {
-      _currentTheme = theme;
+    _markdownStyles.addListener(() {
+      _prefsService.setMarkdownStyles(_markdownStyles.value);
     });
-    _prefsService.setTheme(theme);
-  }
-
-  void _updateMarkdownStyles(MarkdownStylePreferences styles) {
-    setState(() {
-      _markdownStyles = styles;
-    });
-    _prefsService.setMarkdownStyles(styles);
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentThemeData = _currentTheme == 'seez'
-        ? SeezTheme.lightTheme
-        : (_currentTheme == 'dark' ? AppTheme.darkTheme : AppTheme.lightTheme);
+    return ValueListenableBuilder<String>(
+      valueListenable: _currentTheme,
+      builder: (context, theme, _) {
+        final currentThemeData = theme == 'seez'
+            ? SeezTheme.lightTheme
+            : (theme == 'dark' ? AppTheme.darkTheme : AppTheme.lightTheme);
 
-    return AnimatedTheme(
-      data: currentThemeData,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-      child: MaterialApp(
-        navigatorKey: _navigatorKey,
-        title: 'Florence Documentation',
-        debugShowCheckedModeBanner: false,
-        theme: currentThemeData,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: _currentTheme == 'dark' ? ThemeMode.dark : ThemeMode.light,
-        home: _selectedDocsPath == null
-            ? SplashScreen(onDirectorySelected: _onDirectorySelected)
-            : BlocProvider(
-                create: (_) => DocumentationBloc(
-                  repository: DocumentationRepositoryImpl(
-                    datasource: FilesystemDocumentationDatasource(
-                      docsRootPath: _selectedDocsPath!,
-                    ),
-                  ),
-                  annotationService: AnnotationService(
-                    docsRootPath: _selectedDocsPath!,
-                  ),
-                )..add(const LoadFileTreeEvent()),
-                child: DocumentationScreen(
-                  onChangeFolder: _changeFolder,
-                  currentTheme: _currentTheme,
-                  onThemeChanged: _changeTheme,
-                  markdownStyles: _markdownStyles,
-                  onStylesChanged: _updateMarkdownStyles,
-                  docsRootPath: _selectedDocsPath!,
-                ),
-              ),
-      ),
+        return AnimatedTheme(
+          data: currentThemeData,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          child: MaterialApp.router(
+            title: 'Florence Documentation',
+            debugShowCheckedModeBanner: false,
+            theme: currentThemeData,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: theme == 'dark' ? ThemeMode.dark : ThemeMode.light,
+            routerConfig: _router,
+          ),
+        );
+      },
     );
   }
 }
