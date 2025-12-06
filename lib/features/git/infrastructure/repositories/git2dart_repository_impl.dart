@@ -1,5 +1,4 @@
 import 'package:git2dart/git2dart.dart' as git2;
-import 'package:git2dart/git2dart.dart' hide GitStatus;
 
 import '../../domain/entities/git_commit.dart';
 import '../../domain/entities/git_conflict.dart';
@@ -39,7 +38,7 @@ class Git2DartRepositoryImpl implements GitRepository {
       // Set up callbacks
       final callbacks = git2.Callbacks(
         credentials: credentials != null
-            ? _create.CredentialsCallback(credentials)
+            ? _createCredentials(credentials)
             : null,
         transferProgress: onProgress != null
             ? (git2.TransferProgress stats) {
@@ -60,7 +59,7 @@ class Git2DartRepositoryImpl implements GitRepository {
       );
 
       _repositoryPath = localPath;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to clone repository',
         details: e.message,
@@ -85,7 +84,7 @@ class Git2DartRepositoryImpl implements GitRepository {
 
       _repository = git2.Repository.open(path);
       _repositoryPath = path;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to open repository',
         details: e.message,
@@ -177,7 +176,7 @@ class Git2DartRepositoryImpl implements GitRepository {
             staged.isNotEmpty,
         currentBranch: currentBranch,
       );
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to get repository status',
         details: e.message,
@@ -284,7 +283,7 @@ class Git2DartRepositoryImpl implements GitRepository {
       if (author != null) {
         signature.free();
       }
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to create commit',
         details: e.message,
@@ -320,19 +319,17 @@ class Git2DartRepositoryImpl implements GitRepository {
         ref = _repository!.head;
       }
 
-      // Create walker
-      final walker = git2.RevWalk(repo: _repository!);
-      walker.push(ref.target);
+      // Create walker and configure
+      final walker = git2.RevWalk(_repository!);
       walker.sorting({git2.GitSort.time});
+      walker.push(ref.target);
 
-      int count = 0;
-      for (final oid in walker) {
-        if (limit != null && count >= limit) break;
+      // Walk commits
+      final commitList = walker.walk(limit: limit ?? 0);
 
-        final commit = git2.Commit.lookup(repo: _repository!, oid: oid);
-
+      for (final commit in commitList) {
         commits.add(GitCommit(
-          oid: oid.sha,
+          oid: commit.oid.sha,
           message: commit.message,
           author: commit.author.name,
           authorEmail: commit.author.email,
@@ -341,16 +338,17 @@ class Git2DartRepositoryImpl implements GitRepository {
           ),
           parentOid: commit.parents.isNotEmpty ? commit.parents.first.sha : null,
         ));
-
-        commit.free();
-        count++;
       }
 
+      // Free resources
+      for (final commit in commitList) {
+        commit.free();
+      }
       walker.free();
       ref.free();
 
       return commits;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to get commit history',
         details: e.message,
@@ -386,7 +384,7 @@ class Git2DartRepositoryImpl implements GitRepository {
 
       commit.free();
       return result;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to get commit',
         details: e.message,
@@ -426,7 +424,7 @@ class Git2DartRepositoryImpl implements GitRepository {
 
       lastCommit.free();
       head.free();
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to amend commit',
         details: e.message,
@@ -486,7 +484,7 @@ class Git2DartRepositoryImpl implements GitRepository {
       final branchName = head.name.replaceFirst('refs/heads/', '');
       head.free();
       return branchName;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to get current branch',
         details: e.message,
@@ -508,7 +506,7 @@ class Git2DartRepositoryImpl implements GitRepository {
     try {
       final branches = _repository!.branchesLocal;
       return branches.map((branch) => branch.name).toList();
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to get branches',
         details: e.message,
@@ -576,7 +574,7 @@ class Git2DartRepositoryImpl implements GitRepository {
       final url = remote.url;
       remote.free();
       return url;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       // Remote might not exist
       if (e.message.contains('not found') || e.message.contains('does not exist')) {
         return null;
@@ -608,7 +606,7 @@ class Git2DartRepositoryImpl implements GitRepository {
         remote: remoteName,
         url: url,
       );
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to set remote URL',
         details: e.message,
@@ -632,8 +630,8 @@ class Git2DartRepositoryImpl implements GitRepository {
     try {
       final config = _repository!.config;
       final value = config[key];
-      return value?.toString();
-    } on git2.LibGit2Error catch (e) {
+      return value.toString();
+    } on git2.Git2DartError catch (e) {
       if (e.message.contains('not found')) {
         return null;
       }
@@ -661,10 +659,10 @@ class Git2DartRepositoryImpl implements GitRepository {
 
     try {
       final config = global
-          ? git2.Config.openDefault()
+          ? git2.Config.open() // Opens default config (global, XDG, system)
           : _repository!.config;
       config[key] = value;
-    } on git2.LibGit2Error catch (e) {
+    } on git2.Git2DartError catch (e) {
       throw GitException(
         'Failed to set config',
         details: e.message,
@@ -688,32 +686,28 @@ class Git2DartRepositoryImpl implements GitRepository {
     }
   }
 
-  /// Creates a credentials callback for git2dart
-  git2.CredentialsCallback _create.CredentialsCallback(
-    GitCredentials credentials,
-  ) {
-    return (String url, String? usernameFromUrl, Set<git2.CredentialType> allowedTypes) {
-      if (credentials is UsernamePasswordCredentials) {
-        return git2.Credential.userpassPlaintext(
-          username: credentials.username,
-          password: credentials.password,
-        );
-      } else if (credentials is SshKeyCredentials) {
-        return git2.Credential.sshKey(
-          username: credentials.username,
-          publicKey: credentials.publicKeyPath,
-          privateKey: credentials.privateKeyPath,
-          passphrase: credentials.passphrase ?? '',
-        );
-      } else if (credentials is PersonalAccessTokenCredentials) {
-        // Use token as password with empty username or provided username
-        return git2.Credential.userpassPlaintext(
-          username: credentials.username ?? 'git',
-          password: credentials.token,
-        );
-      }
+  /// Creates git2dart Credentials from our domain credentials
+  git2.Credentials _createCredentials(GitCredentials credentials) {
+    if (credentials is UsernamePasswordCredentials) {
+      return git2.UserPass(
+        username: credentials.username,
+        password: credentials.password,
+      );
+    } else if (credentials is SshKeyCredentials) {
+      return git2.Keypair(
+        username: credentials.username,
+        pubKey: credentials.publicKeyPath,
+        privateKey: credentials.privateKeyPath,
+        passPhrase: credentials.passphrase ?? '',
+      );
+    } else if (credentials is PersonalAccessTokenCredentials) {
+      // Use token as password with provided username or 'git'
+      return git2.UserPass(
+        username: credentials.username ?? 'git',
+        password: credentials.token,
+      );
+    }
 
-      throw GitException('Unsupported credential type: ${credentials.runtimeType}');
-    };
+    throw GitException('Unsupported credential type: ${credentials.runtimeType}');
   }
 }
