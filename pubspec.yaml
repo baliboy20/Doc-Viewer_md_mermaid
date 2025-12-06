@@ -44,6 +44,12 @@ dependencies:
   # UUID Generation for Annotations
   uuid: ^4.0.0
 
+  # Routing (Phase 1 Refactoring)
+  go_router: ^14.0.0
+
+  # Secure Storage (Phase 2 Git Integration)
+  flutter_secure_storage: ^9.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

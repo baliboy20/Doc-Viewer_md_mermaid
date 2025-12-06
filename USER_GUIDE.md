@@ -1,5 +1,6 @@
 # Rome Doc Viewer - User Guide
 
+[](#annotation-marker-a5308326-0606-4c76-b8c5-0e97ace9ba51)
 ## Getting Started
 
 **Initial Setup**
@@ -64,3 +65,22 @@
 - Use tags to organize annotations by topic
 - Different colors help categorize types of notes (questions=red, important=orange, etc.)
 - Collapse the annotation gutter for distraction-free reading
+
+---
+
+<!-- ANNOTATIONS_SECTION_START -->
+
+## 📌 Annotations
+
+### 📝 Note 1
+**Anchor:** "Getting Started"
+**Line:** 3
+**ID:** a5308326-0606-4c76-b8c5-0e97ace9ba51
+**Created:** 2025-12-06 19:48:38
+**Color:** yellow
+
+fdggdfdf
+
+---
+
+<!-- ANNOTATIONS_SECTION_END -->
