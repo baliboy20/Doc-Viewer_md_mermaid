@@ -6,7 +6,7 @@ import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_s
 import 'core/utils/preferences_service.dart';
 import 'core/theme/seez_theme.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/widgets/help_dialog.dart';
+import 'core/widgets/help_dialog.dart';
 import 'core/routing/app_router.dart';
 
 void main() {
