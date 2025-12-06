@@ -79,7 +79,7 @@ class _ContentAreaState extends State<ContentArea> {
 
   void _attemptScroll(annotation, GlobalKey key) {
     try {
-      // Get the RenderBox from the GlobalKey
+      // Get the context from the GlobalKey
       final context = key.currentContext;
 
       AppLogger.debug(
@@ -98,64 +98,43 @@ class _ContentAreaState extends State<ContentArea> {
         return;
       }
 
-      final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+      AppLogger.info(
+        'Scrolling to annotation using Scrollable.ensureVisible',
+        tag: 'ContentArea',
+        data: 'ID: ${annotation.id}, Anchor: "${annotation.anchorText}"',
+      );
 
-      if (renderBox != null) {
-        AppLogger.debug(
-          'Found RenderBox',
-          tag: 'ContentArea',
-          data: 'ID: ${annotation.id}, Size: ${renderBox.size}',
-        );
+      // Use Flutter's built-in ensureVisible with precise alignment
+      // alignment: 0.0 puts the target at the top of the viewport
+      // We use 0.15 to leave a small margin at the top for context
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        alignment: 0.0, // Position at top of viewport for maximum accuracy
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+      );
 
-        // Get the position of the annotation marker relative to the scroll view
-        final RenderObject? scrollViewRenderObject =
-            _scrollController.position.context.storageContext.findRenderObject();
-
-        if (scrollViewRenderObject is RenderBox) {
-          // Calculate the offset of the annotation marker
-          final offset = renderBox.localToGlobal(Offset.zero, ancestor: scrollViewRenderObject);
-
-          AppLogger.debug(
-            'Calculated offset',
-            tag: 'ContentArea',
-            data: 'ID: ${annotation.id}, Offset: $offset, Current scroll: ${_scrollController.offset}',
-          );
-
-          // Calculate target scroll position
-          // Subtract some offset to show context above the annotation
-          final targetPosition = _scrollController.offset + offset.dy - 100;
-
-          // Clamp to valid scroll range
-          final maxScroll = _scrollController.position.maxScrollExtent;
-          final clampedPosition = targetPosition.clamp(0.0, maxScroll);
-
-          AppLogger.info(
-            'Scrolling to annotation using GlobalKey',
-            tag: 'ContentArea',
-            data: 'ID: ${annotation.id}, Target: ${targetPosition.toStringAsFixed(1)}, Clamped: ${clampedPosition.toStringAsFixed(1)}',
-          );
+      // After scrolling, add a small adjustment to account for padding
+      Future.delayed(const Duration(milliseconds: 550), () {
+        if (_scrollController.hasClients) {
+          final currentOffset = _scrollController.offset;
+          // Scroll back up slightly to show some context above
+          final adjustedOffset = (currentOffset - 80).clamp(0.0, _scrollController.position.maxScrollExtent);
 
           _scrollController.animateTo(
-            clampedPosition,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
+            adjustedOffset,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
           );
-        } else {
-          AppLogger.warning(
-            'Could not find scroll view RenderBox',
-            tag: 'ContentArea',
-            data: 'ID: ${annotation.id}',
-          );
-          _scrollToLine(annotation.lineNumber ?? 1);
         }
-      } else {
-        AppLogger.warning(
-          'RenderBox is null',
-          tag: 'ContentArea',
-          data: 'ID: ${annotation.id}',
-        );
-        _scrollToLine(annotation.lineNumber ?? 1);
-      }
+      });
+
+      AppLogger.success(
+        'Successfully scrolled to annotation',
+        tag: 'ContentArea',
+        data: 'ID: ${annotation.id}',
+      );
     } catch (e) {
       AppLogger.error(
         'Error scrolling to annotation',
@@ -341,7 +320,7 @@ class _ContentAreaState extends State<ContentArea> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      CupertinoIcons.bookmark_fill,
+                      CupertinoIcons.bookmark,
                       size: 16,
                       color: Colors.white,
                     ),
@@ -395,8 +374,13 @@ class _ContentAreaState extends State<ContentArea> {
         currentTheme: widget.currentTheme,
         annotations: state.annotations,
         annotationKeys: _annotationKeys,
-        onTextSelected: (selectedText, widgetContext) {
-          _showAddAnnotationDialog(context, state, selectedText: selectedText);
+        onTextSelected: (selectedText, widgetContext, elementIndex) {
+          _showAddAnnotationDialog(
+            context,
+            state,
+            selectedText: selectedText,
+            elementIndex: elementIndex,
+          );
         },
       ),
     );
@@ -406,6 +390,7 @@ class _ContentAreaState extends State<ContentArea> {
     BuildContext context,
     DocumentationLoaded state, {
     String? selectedText,
+    int? elementIndex,
   }) async {
     AppLogger.info(
       '_showAddAnnotationDialog called',
@@ -441,6 +426,7 @@ class _ContentAreaState extends State<ContentArea> {
         AddAnnotationEvent(
           filePath: state.selectedFilePath!,
           anchorText: result.anchorText,
+          elementIndex: elementIndex,
           content: result.content,
           color: result.color,
           tags: result.tags,

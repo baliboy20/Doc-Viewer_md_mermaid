@@ -7,6 +7,7 @@ import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import '../../domain/entities/markdown_style_preferences.dart';
 import '../../infrastructure/services/app_logger.dart';
+import '../../infrastructure/services/markdown_element_indexer.dart';
 import '../theme/seez_theme.dart';
 import '../theme/app_theme.dart';
 import 'mermaid_diagram.dart';
@@ -16,7 +17,7 @@ class MarkdownViewer extends StatefulWidget {
   final String content;
   final MarkdownStylePreferences stylePreferences;
   final String currentTheme;
-  final Function(String selectedText, BuildContext context)? onTextSelected;
+  final Function(String selectedText, BuildContext context, int? elementIndex)? onTextSelected;
   final List<dynamic>? annotations; // List of annotations for anchor injection
   final Map<String, GlobalKey>? annotationKeys; // GlobalKeys for scroll targeting
 
@@ -37,6 +38,8 @@ class MarkdownViewer extends StatefulWidget {
 class _MarkdownViewerState extends State<MarkdownViewer> {
   final TextSelection _textSelection = const TextSelection.collapsed(offset: 0);
   String _selectedText = '';
+  int? _selectedElementIndex; // Track which element was selected
+  final MarkdownElementIndexer _indexer = MarkdownElementIndexer();
 
   Color get _textColor {
     return widget.currentTheme == 'seez'
@@ -52,18 +55,78 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
         : AppTheme.primaryBlue;
   }
 
+  /// Determines which element index contains the selected text
+  int? _findElementIndexForSelection(String content, String selectedText) {
+    if (selectedText.isEmpty) return null;
+
+    // Find all ln-X markers in the content
+    final markerPattern = RegExp(r'\[]\(#ln-(\d+)\)');
+    final matches = markerPattern.allMatches(content).toList();
+
+    if (matches.isEmpty) {
+      AppLogger.warning(
+        'No element markers found in content',
+        tag: 'MarkdownViewer',
+      );
+      return null;
+    }
+
+    // Find position of selected text
+    final selectedPos = content.toLowerCase().indexOf(selectedText.toLowerCase());
+    if (selectedPos == -1) {
+      AppLogger.warning(
+        'Selected text not found in content',
+        tag: 'MarkdownViewer',
+        data: 'Text: "$selectedText"',
+      );
+      return null;
+    }
+
+    // Find which marker comes before this position
+    int? elementIndex;
+    for (final match in matches) {
+      if (match.start < selectedPos) {
+        elementIndex = int.tryParse(match.group(1)!);
+      } else {
+        break; // Found the element
+      }
+    }
+
+    AppLogger.debug(
+      'Determined element index from selection',
+      tag: 'MarkdownViewer',
+      data: 'Text: "$selectedText", Element: $elementIndex',
+    );
+
+    return elementIndex;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Markers are now permanently in the file content, no need to inject dynamically
+    // Use content as-is for rendering
+    // Element markers cause parser crashes, so we don't inject them during display
+    String contentToRender = widget.content;
 
     return SelectionArea(
       onSelectionChanged: (selectedContent) {
         setState(() {
           _selectedText = selectedContent?.plainText ?? '';
-          AppLogger.debug(
-            'Text selected: "${_selectedText}"',
-            tag: 'MarkdownViewer',
-          );
+
+          // Determine which element contains this selection
+          if (_selectedText.isNotEmpty) {
+            _selectedElementIndex = _findElementIndexForSelection(
+              widget.content,
+              _selectedText,
+            );
+
+            AppLogger.info(
+              'Text selected in element',
+              tag: 'MarkdownViewer',
+              data: 'Text: "$_selectedText", Element: $_selectedElementIndex',
+            );
+          } else {
+            _selectedElementIndex = null;
+          }
         });
       },
       contextMenuBuilder: (context, selectableRegionState) {
@@ -87,10 +150,11 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
                   AppLogger.info(
                     'Add Annotation button clicked',
                     tag: 'MarkdownViewer',
-                    data: 'Selected text: "$_selectedText"',
+                    data: 'Selected text: "$_selectedText", Element: $_selectedElementIndex',
                   );
                   ContextMenuController.removeAny();
-                  widget.onTextSelected!(_selectedText, context);
+                  // Pass selected text, context, and element index
+                  widget.onTextSelected!(_selectedText, context, _selectedElementIndex);
                 },
                 child: const Text('Add Annotation'),
               ),
@@ -98,7 +162,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
         );
       },
       child: MarkdownBody(
-        data: widget.content,
+        data: contentToRender,
         selectable: false, // Disable MarkdownBody's selection, use SelectionArea instead
         styleSheet: _buildMarkdownStyleSheet(context),
         onTapLink: (text, href, title) {
@@ -111,7 +175,7 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
             currentTheme: widget.currentTheme,
             stylePreferences: widget.stylePreferences,
           ),
-          'html': HtmlCommentBuilder(
+          'a': AnnotationMarkerBuilder(
             annotationKeys: widget.annotationKeys ?? {},
           ),
         },
@@ -315,11 +379,11 @@ class _MarkdownViewerState extends State<MarkdownViewer> {
   }
 }
 
-/// Custom builder for HTML elements to attach GlobalKeys to annotation markers
-class HtmlCommentBuilder extends MarkdownElementBuilder {
+/// Custom builder for anchor tags to attach GlobalKeys to annotation markers
+class AnnotationMarkerBuilder extends MarkdownElementBuilder {
   final Map<String, GlobalKey> annotationKeys;
 
-  HtmlCommentBuilder({
+  AnnotationMarkerBuilder({
     required this.annotationKeys,
   });
 
@@ -332,39 +396,42 @@ class HtmlCommentBuilder extends MarkdownElementBuilder {
         final annotationId = href.substring('#annotation-marker-'.length);
 
         AppLogger.debug(
-          'Found annotation marker anchor in HTML',
-          tag: 'HtmlCommentBuilder',
+          'Found annotation marker anchor',
+          tag: 'AnnotationMarkerBuilder',
           data: 'ID: $annotationId, href: $href',
         );
 
-        // Get or create GlobalKey for this annotation
+        // Get GlobalKey for this annotation
         final key = annotationKeys[annotationId];
 
         if (key != null) {
           AppLogger.info(
-            'Attaching GlobalKey to annotation marker anchor',
-            tag: 'HtmlCommentBuilder',
+            'Attaching GlobalKey to annotation marker',
+            tag: 'AnnotationMarkerBuilder',
             data: 'ID: $annotationId',
           );
 
-          // Return an invisible widget with the key attached
-          // Using SizedBox instead of Container for better performance
-          return SizedBox(
+          // Return a Text widget with the emoji and the GlobalKey attached
+          // The emoji (📌) is already in the markdown as [📌](#annotation-marker-xxx)
+          return Text(
+            element.textContent,
             key: key,
-            width: 0,
-            height: 0,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.0,
+            ),
           );
         } else {
           AppLogger.warning(
             'No GlobalKey found for annotation',
-            tag: 'HtmlCommentBuilder',
+            tag: 'AnnotationMarkerBuilder',
             data: 'ID: $annotationId',
           );
         }
       }
     }
 
-    // Return null for other HTML elements (use default rendering)
+    // Return null for other anchor tags (use default rendering)
     return null;
   }
 }

@@ -1,4 +1,5 @@
 import '../../domain/entities/annotation.dart';
+import 'markdown_element_indexer.dart';
 
 /// Parses and serializes annotations from/to markdown files
 class AnnotationParser {
@@ -6,6 +7,8 @@ class AnnotationParser {
       '---\n\n<!-- ANNOTATIONS_SECTION_START -->\n\n## 📌 Annotations\n';
   static const String sectionEnd = '<!-- ANNOTATIONS_SECTION_END -->';
   static const String noteSeparator = '---\n';
+
+  final MarkdownElementIndexer _indexer = MarkdownElementIndexer();
 
   /// Parses a markdown file and extracts content + annotations
   ParsedDocument parse(String fileContent, String filePath) {
@@ -91,6 +94,7 @@ class AnnotationParser {
     String? id;
     String? anchorText;
     int? lineNumber;
+    int? elementIndex;
     String? color;
     DateTime? createdAt;
     DateTime? updatedAt;
@@ -121,6 +125,11 @@ class AnnotationParser {
         final lineValue = _extractValue(line);
         if (lineValue.isNotEmpty && lineValue != 'N/A') {
           lineNumber = int.tryParse(lineValue);
+        }
+      } else if (line.startsWith('**Element:**')) {
+        final elementValue = _extractValue(line);
+        if (elementValue.isNotEmpty && elementValue != 'N/A') {
+          elementIndex = int.tryParse(elementValue);
         }
       } else if (line.startsWith('**ID:**')) {
         id = _extractValue(line);
@@ -164,6 +173,7 @@ class AnnotationParser {
       filePath: filePath,
       anchorText: anchorText,
       lineNumber: lineNumber,
+      elementIndex: elementIndex,
       content: contentLines.join('\n').trim(),
       color: color ?? 'yellow',
       createdAt: createdAt,
@@ -198,34 +208,29 @@ class AnnotationParser {
       return cleanContent.trimRight() + '\n\n';
     }
 
-    // First, remove any existing markers from content
+    // First, remove any existing markers from content (both annotation and element markers)
     String workingContent = _removeAllMarkers(content);
 
-    // Build a map of line numbers to annotation IDs
+    // Build a map using anchor text search (simpler, more reliable)
     final Map<int, List<String>> lineToAnnotations = {};
 
     for (final annotation in annotations) {
-      if (annotation.lineNumber != null && annotation.lineNumber! > 0) {
-        lineToAnnotations.putIfAbsent(annotation.lineNumber!, () => []);
-        lineToAnnotations[annotation.lineNumber!]!.add(annotation.id);
-      } else if (annotation.anchorText.isNotEmpty) {
-        // Try to find the line by anchor text
-        final lines = workingContent.split('\n');
-        final anchorLower = annotation.anchorText.toLowerCase().trim();
+      // Search for anchor text to find position
+      final lines = workingContent.split('\n');
+      final anchorLower = annotation.anchorText.toLowerCase().trim();
 
-        for (int i = 0; i < lines.length; i++) {
-          if (lines[i].toLowerCase().contains(anchorLower)) {
-            final lineNum = i + 1; // 1-indexed
-            lineToAnnotations.putIfAbsent(lineNum, () => []);
-            lineToAnnotations[lineNum]!.add(annotation.id);
-            break;
-          }
+      for (int i = 0; i < lines.length; i++) {
+        if (lines[i].toLowerCase().contains(anchorLower)) {
+          final lineNum = i + 1; // 1-indexed
+          lineToAnnotations.putIfAbsent(lineNum, () => []);
+          lineToAnnotations[lineNum]!.add(annotation.id);
+          break; // Found first match, stop searching
         }
       }
     }
 
-    // Inject markers into content
-    final contentWithMarkers = _injectMarkers(workingContent, lineToAnnotations);
+    // Inject annotation markers at found positions (simple line-based)
+    final contentWithMarkers = _injectMarkersAtLines(workingContent, lineToAnnotations);
 
     final buffer = StringBuffer();
     buffer.write(contentWithMarkers.trimRight());
@@ -244,6 +249,7 @@ class AnnotationParser {
       buffer.write('\n### 📝 Note ${i + 1}\n');
       buffer.write('**Anchor:** "${annotation.anchorText}"\n');
       buffer.write('**Line:** ${annotation.lineNumber ?? "N/A"}\n');
+      buffer.write('**Element:** ${annotation.elementIndex ?? "N/A"}\n');
       buffer.write('**ID:** ${annotation.id}\n');
       buffer.write('**Created:** ${_formatDateTime(annotation.createdAt)}\n');
 
@@ -270,20 +276,22 @@ class AnnotationParser {
     return buffer.toString();
   }
 
-  /// Removes all annotation markers from content
+  /// Removes all annotation and element markers from content
   String _removeAllMarkers(String content) {
-    // Remove lines that are annotation markers (markdown link format)
+    // Remove lines that are markers (both annotation and element markers)
     final lines = content.split('\n');
     final cleanedLines = lines.where((line) {
       final trimmed = line.trim();
-      // Match pattern: [](#annotation-marker-xxx)
-      return !trimmed.startsWith('[](#annotation-marker-');
+      // Match patterns: [📌](#annotation-marker-xxx), [](#annotation-marker-xxx), or [](#ln-X)
+      return !trimmed.startsWith('[📌](#annotation-marker-') &&
+             !trimmed.startsWith('[](#annotation-marker-') &&
+             !trimmed.startsWith('[](#ln-');
     }).toList();
     return cleanedLines.join('\n');
   }
 
   /// Injects markdown link markers at specified line numbers
-  String _injectMarkers(String content, Map<int, List<String>> lineToAnnotations) {
+  String _injectMarkersAtLines(String content, Map<int, List<String>> lineToAnnotations) {
     if (lineToAnnotations.isEmpty) {
       return content;
     }
@@ -296,11 +304,11 @@ class AnnotationParser {
 
       // Check if this line has annotations
       if (lineToAnnotations.containsKey(lineNum)) {
-        // Add invisible markdown link markers for all annotations on this line
+        // Add markdown link markers with bookmark icon for all annotations on this line
         for (final annotationId in lineToAnnotations[lineNum]!) {
-          // Markdown link with empty text and anchor href
-          // Renders as: <a href="#annotation-marker-xxx"></a> (invisible)
-          result.writeln('[](#annotation-marker-$annotationId)');
+          // Markdown link with bookmark emoji and anchor href
+          // Renders as: <a href="#annotation-marker-xxx">📌</a> (visible icon)
+          result.writeln('[📌](#annotation-marker-$annotationId)');
         }
       }
 

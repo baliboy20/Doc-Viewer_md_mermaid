@@ -78,6 +78,7 @@ class AddAnnotationEvent extends DocumentationEvent {
   final String filePath;
   final String anchorText;
   final int? lineNumber;
+  final int? elementIndex;
   final String content;
   final String color;
   final List<String> tags;
@@ -86,13 +87,14 @@ class AddAnnotationEvent extends DocumentationEvent {
     required this.filePath,
     required this.anchorText,
     this.lineNumber,
+    this.elementIndex,
     required this.content,
     this.color = 'yellow',
     this.tags = const [],
   });
 
   @override
-  List<Object?> get props => [filePath, anchorText, lineNumber, content, color, tags];
+  List<Object?> get props => [filePath, anchorText, lineNumber, elementIndex, content, color, tags];
 }
 
 /// Event to update an existing annotation

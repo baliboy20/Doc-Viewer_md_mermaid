@@ -14,6 +14,10 @@ class Annotation extends Equatable {
   /// Line number where the anchor appears (1-indexed)
   final int? lineNumber;
 
+  /// Element index in the markdown document (0-indexed)
+  /// This identifies which block element (heading, paragraph, etc.) contains this annotation
+  final int? elementIndex;
+
   /// The actual note content
   final String content;
 
@@ -34,6 +38,7 @@ class Annotation extends Equatable {
     required this.filePath,
     required this.anchorText,
     this.lineNumber,
+    this.elementIndex,
     required this.content,
     this.color = 'yellow',
     required this.createdAt,
@@ -47,6 +52,7 @@ class Annotation extends Equatable {
     String? filePath,
     String? anchorText,
     int? lineNumber,
+    int? elementIndex,
     String? content,
     String? color,
     DateTime? createdAt,
@@ -58,6 +64,7 @@ class Annotation extends Equatable {
       filePath: filePath ?? this.filePath,
       anchorText: anchorText ?? this.anchorText,
       lineNumber: lineNumber ?? this.lineNumber,
+      elementIndex: elementIndex ?? this.elementIndex,
       content: content ?? this.content,
       color: color ?? this.color,
       createdAt: createdAt ?? this.createdAt,
@@ -72,6 +79,7 @@ class Annotation extends Equatable {
         filePath,
         anchorText,
         lineNumber,
+        elementIndex,
         content,
         color,
         createdAt,
@@ -81,6 +89,6 @@ class Annotation extends Equatable {
 
   @override
   String toString() {
-    return 'Annotation(id: $id, anchor: $anchorText, color: $color)';
+    return 'Annotation(id: $id, anchor: $anchorText, element: $elementIndex, color: $color)';
   }
 }
