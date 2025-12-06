@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/file_node.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/file_node.dart';
 import '../../domain/entities/annotation.dart';
 
 /// Base class for all documentation states

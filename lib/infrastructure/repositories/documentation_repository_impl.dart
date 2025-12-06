@@ -1,5 +1,5 @@
-import '../../domain/entities/file_node.dart';
-import '../../domain/repositories/documentation_repository.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/file_node.dart';
+import 'package:doc_viewer_app/features/documentation/domain/repositories/documentation_repository.dart';
 import '../datasources/filesystem_documentation_datasource.dart';
 
 /// Implementation of DocumentationRepository using filesystem datasource

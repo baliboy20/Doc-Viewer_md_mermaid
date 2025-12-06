@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../domain/entities/markdown_style_preferences.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'app_logger.dart';
 
 /// Service for managing user preferences

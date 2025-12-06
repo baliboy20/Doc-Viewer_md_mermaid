@@ -11,7 +11,7 @@ import '../../application/bloc/documentation_event.dart';
 import '../../infrastructure/repositories/documentation_repository_impl.dart';
 import '../../infrastructure/datasources/filesystem_documentation_datasource.dart';
 import '../../infrastructure/services/annotation_service.dart';
-import '../../domain/entities/markdown_style_preferences.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 
 import 'route_paths.dart';
 

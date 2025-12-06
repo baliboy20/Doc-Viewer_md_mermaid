@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
-import '../../domain/entities/markdown_style_preferences.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import '../../infrastructure/services/markdown_element_indexer.dart';
 import 'package:doc_viewer_app/core/theme/seez_theme.dart';

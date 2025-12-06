@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../application/bloc/documentation_bloc.dart';
 import '../../application/bloc/documentation_event.dart';
 import '../../application/bloc/documentation_state.dart';
-import '../../domain/entities/markdown_style_preferences.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import 'markdown_viewer.dart';
 import 'mermaid_file_viewer.dart';

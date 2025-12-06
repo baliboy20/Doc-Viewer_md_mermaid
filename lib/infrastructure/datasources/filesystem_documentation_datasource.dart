@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../../domain/entities/file_node.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/file_node.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 /// Data source for reading documentation files from the file system

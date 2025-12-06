@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-import 'domain/entities/markdown_style_preferences.dart';
+import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'core/utils/preferences_service.dart';
 import 'core/theme/seez_theme.dart';
 import 'core/theme/app_theme.dart';
