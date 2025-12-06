@@ -53,10 +53,15 @@ dependencies:
   # Git Operations (Phase 2 Git Integration)
   git2dart: ^0.4.0
 
+  # Path utilities
+  path: ^1.9.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true

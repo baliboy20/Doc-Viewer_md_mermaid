@@ -28,7 +28,7 @@ class CredentialStorage {
     required String repoUrl,
     required GitCredentials credentials,
   }) async {
-    final normalizedUrl = _normalizeUrl(repoUrl);
+    final normalizedUrl = normalizeUrl(repoUrl);
 
     try {
       if (credentials is UsernamePasswordCredentials) {
@@ -51,7 +51,7 @@ class CredentialStorage {
   ///
   /// Returns credentials if found, null otherwise
   Future<GitCredentials?> loadCredentials(String repoUrl) async {
-    final normalizedUrl = _normalizeUrl(repoUrl);
+    final normalizedUrl = normalizeUrl(repoUrl);
 
     try {
       // Try to load username/password first
@@ -76,7 +76,7 @@ class CredentialStorage {
   ///
   /// [repoUrl] - Repository URL to delete credentials for
   Future<void> deleteCredentials(String repoUrl) async {
-    final normalizedUrl = _normalizeUrl(repoUrl);
+    final normalizedUrl = normalizeUrl(repoUrl);
 
     try {
       // Delete all possible credential types
@@ -95,7 +95,7 @@ class CredentialStorage {
   ///
   /// Returns true if any credentials are stored
   Future<bool> hasCredentials(String repoUrl) async {
-    final normalizedUrl = _normalizeUrl(repoUrl);
+    final normalizedUrl = normalizeUrl(repoUrl);
 
     try {
       final username = await _storage.read(key: '$_usernamePrefix$normalizedUrl');
@@ -227,7 +227,9 @@ class CredentialStorage {
   /// Normalize URL to use as storage key
   ///
   /// Removes protocol, trailing slashes, and .git extension
-  String _normalizeUrl(String url) {
+  ///
+  /// This method is public to allow testing of URL normalization logic
+  String normalizeUrl(String url) {
     var normalized = url.toLowerCase();
 
     // Remove protocol
