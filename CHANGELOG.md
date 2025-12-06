@@ -5,6 +5,143 @@ All notable changes to DocViewer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0 "Nassau"] - 2025-12-06
+
+### Major Architectural Refactoring - Phase 1
+
+This release represents a complete architectural transformation from layer-based to feature-based organization, establishing a foundation for future development.
+
+### Added
+- **Feature-Based Architecture**: Complete restructuring to Domain-Driven Design (DDD)
+  - `lib/features/documentation/` - Documentation viewer feature (complete)
+  - `lib/features/annotations/` - Sticky notes feature (complete)
+  - `lib/features/git/` - Git integration feature (placeholder for Phase 2)
+  - Each feature organized into domain/infrastructure/application/presentation layers
+- **Declarative Routing System**: Implemented go_router for type-safe navigation
+  - `lib/core/routing/app_router.dart` - Centralized router configuration
+  - `lib/core/routing/route_paths.dart` - Route path and name constants
+  - State-based routing with ValueNotifiers for app-level state
+  - Support for deep linking and URL-based navigation
+- **Core Shared Infrastructure**: Organized shared code in `lib/core/`
+  - `core/constants/` - App-wide constants (app name, version, supported extensions)
+  - `core/theme/` - Theme configurations (Seez, light, dark themes)
+  - `core/utils/` - Shared utilities (logging, file operations, preferences)
+  - `core/widgets/` - Shared widgets (help dialog)
+  - `core/routing/` - Routing configuration
+- **Repository Pattern**: Clean separation of concerns
+  - `DocumentationRepository` interface and `FilesystemDocumentationRepositoryImpl`
+  - `AnnotationRepository` interface and `AnnotationRepositoryImpl`
+  - Infrastructure layer implements domain interfaces
+- **Complete BLoC Implementation for Annotations**
+  - `AnnotationBloc` with full event/state management
+  - `AnnotationEvent` types: Load, Add, Update, Delete, Search
+  - `AnnotationState` types: Initial, Loading, Loaded, Success, Error
+  - Proper error handling and state transitions
+- **Comprehensive Documentation**
+  - `docs/ARCHITECTURE.md` - Complete architectural guide (40+ pages)
+  - Updated `README.md` with project overview and usage guide
+  - Feature-specific READMEs in each feature directory
+  - Architecture principles, best practices, and migration history
+
+### Changed
+- **Project Structure**: Migrated from layer-based to feature-based organization
+  - **Before**: `lib/{domain,infrastructure,application,presentation}/`
+  - **After**: `lib/{core,features/{documentation,annotations,git}}/`
+  - Removed old layer-based directories after successful migration
+- **Main App Entry Point**: Updated to use go_router
+  - Converted from `MaterialApp` to `MaterialApp.router`
+  - Implemented ValueNotifiers for reactive state management
+  - Integrated router configuration with app state
+- **Import Strategy**: Established clear import conventions
+  - Within feature: relative imports (e.g., `'../../domain/entities/annotation.dart'`)
+  - Cross-feature: package imports (e.g., `'package:doc_viewer_app/features/..'`)
+  - Core imports: always package imports
+  - Ensures clear dependency flow and better maintainability
+- **Feature Organization**: All code grouped by business capability
+  - Documentation feature: File tree, markdown rendering, style preferences
+  - Annotations feature: Sticky notes, gutter, sidebar, dialog
+  - Clear feature boundaries with minimal coupling
+- **Dependency Management**: Added packages for Phase 1 and Phase 2
+  - `go_router` ^14.0.0 - Declarative routing
+  - `flutter_secure_storage` ^9.0.0 - Keychain integration (Phase 2 prep)
+- **macOS Configuration**: Added Keychain entitlements
+  - Updated `DebugProfile.entitlements` and `Release.entitlements`
+  - Added `keychain-access-groups` capability for secure credential storage
+
+### Fixed
+- All imports updated to use correct package paths after migration
+- Cross-feature dependencies properly resolved using package imports
+- Compilation errors resolved (markdown_element_indexer import in annotation_parser)
+- Unused imports removed (annotation_gutter in content_area)
+- Test file updated to reference correct app class (FlorenceDocsApp)
+
+### Technical Implementation
+- **Week 1: Setup & Infrastructure**
+  - Created feature-based directory structure
+  - Implemented go_router with state management
+  - Established core shared code organization
+  - Moved theme and utility files to core
+- **Week 2: Documentation Feature Migration**
+  - Migrated all documentation code to feature directory
+  - Organized into DDD layers (domain → infrastructure → application → presentation)
+  - Updated 40+ import statements to use package format
+  - Created feature README.md
+- **Week 3: Annotations Feature Migration**
+  - Migrated all annotation code to feature directory
+  - Created repository interface and implementation
+  - Implemented complete AnnotationBloc with events/states
+  - Moved markdown_element_indexer to documentation feature (shared infrastructure)
+  - Updated all cross-feature dependencies
+- **Week 4: Testing & Polish**
+  - Ran `flutter clean && flutter pub get`
+  - Fixed compilation errors and import issues
+  - Verified successful compilation (0 errors, 37 info/warnings)
+  - Created comprehensive architecture documentation
+  - Updated main README with project overview
+
+### Architecture Benefits
+- **Scalability**: Easy to add new features without touching existing code
+- **Maintainability**: Features are self-contained and independently testable
+- **Team Collaboration**: Different teams can work on different features
+- **Code Organization**: Business logic grouped by capability, not technical layer
+- **Dependency Clarity**: Clear import strategy prevents circular dependencies
+- **Testing**: Features can be tested in isolation
+- **Onboarding**: New developers can understand one feature at a time
+
+### Migration Path
+- All existing functionality preserved - no breaking changes
+- Feature parity with v1.5.0 maintained
+- Clean architecture establishes foundation for Phase 2 (Git integration)
+- Comprehensive documentation for future development
+
+### Dependencies Added
+```yaml
+dependencies:
+  go_router: ^14.0.0              # Declarative routing
+  flutter_secure_storage: ^9.0.0  # Secure credential storage (Phase 2)
+```
+
+### Files Changed
+- **Created**: 40+ new files in feature-based structure
+- **Updated**: 50+ files with new import paths
+- **Moved**: All domain, infrastructure, application, presentation code
+- **Removed**: Old layer-based directories (lib/domain, lib/infrastructure, etc.)
+
+### Documentation
+- `docs/ARCHITECTURE.md` - Complete architectural reference
+- `README.md` - Updated with project overview and usage
+- `docs/proposals/phase-1-refactoring-plan.md` - Implementation plan
+- Feature READMEs in each feature directory
+
+### Next Steps
+**Phase 2: Git Integration** (Planned for v1.7.0)
+- Version control operations
+- Commit history viewing
+- Diff visualization
+- Branch management
+
+---
+
 ## [1.5.0 "Martinique"] - 2025-12-06
 
 ### Added

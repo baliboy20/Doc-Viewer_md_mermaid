@@ -1,5 +1,5 @@
 import 'package:doc_viewer_app/features/annotations/domain/entities/annotation.dart';
-import 'markdown_element_indexer.dart';
+import 'package:doc_viewer_app/features/documentation/infrastructure/services/markdown_element_indexer.dart';
 
 /// Parses and serializes annotations from/to markdown files
 class AnnotationParser {

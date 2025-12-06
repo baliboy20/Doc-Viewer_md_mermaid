@@ -11,7 +11,6 @@ import 'markdown_viewer.dart';
 import 'mermaid_file_viewer.dart';
 import 'package:doc_viewer_app/features/annotations/presentation/widgets/annotation_dialog.dart';
 import 'package:doc_viewer_app/features/annotations/presentation/widgets/annotations_sidebar.dart';
-import 'package:doc_viewer_app/features/annotations/presentation/widgets/annotation_gutter.dart';
 import 'package:doc_viewer_app/features/annotations/presentation/widgets/positioned_annotation_gutter.dart';
 import 'package:doc_viewer_app/core/theme/seez_theme.dart';
 import 'package:doc_viewer_app/core/theme/app_theme.dart';

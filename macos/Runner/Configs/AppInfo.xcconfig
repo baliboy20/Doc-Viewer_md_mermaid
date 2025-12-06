@@ -14,7 +14,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.florence.docViewerApp
 PRODUCT_COPYRIGHT = Copyright © 2025 Florence. All rights reserved.
 
 // Version name (code name)
-VERSION_NAME = Martinique
+VERSION_NAME = Nassau
 
 // Full version string with code name
 MARKETING_VERSION = $(FLUTTER_BUILD_NAME) "$(VERSION_NAME)"
