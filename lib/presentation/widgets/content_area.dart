@@ -320,7 +320,7 @@ class _ContentAreaState extends State<ContentArea> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      CupertinoIcons.bookmark_fill,
+                      CupertinoIcons.bookmark,
                       size: 16,
                       color: Colors.white,
                     ),

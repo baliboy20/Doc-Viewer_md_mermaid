@@ -149,7 +149,7 @@ class PositionedAnnotationGutter extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                CupertinoIcons.bookmark_fill,
+                                CupertinoIcons.bookmark,
                                 size: 14,
                                 color: color,
                               ),
