@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../application/bloc/documentation_bloc.dart';
-import '../../application/bloc/documentation_state.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_bloc.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_state.dart';
 import 'sidebar_navigation.dart';
 
 /// Sidebar area wrapper with animated loading overlay

@@ -7,8 +7,8 @@ import '../widgets/sidebar_area.dart';
 import '../widgets/content_area.dart';
 import '../widgets/style_settings_dialog.dart';
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
-import '../../application/bloc/documentation_bloc.dart';
-import '../../application/bloc/documentation_event.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_bloc.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';
 
 /// Main documentation viewer screen with animated header and layout
 class DocumentationScreen extends StatefulWidget {

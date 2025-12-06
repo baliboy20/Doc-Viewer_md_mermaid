@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../presentation/screens/splash_screen.dart';
 import '../../presentation/screens/documentation_screen.dart';
 
-import '../../application/bloc/documentation_bloc.dart';
-import '../../application/bloc/documentation_event.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_bloc.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';
 import 'package:doc_viewer_app/features/documentation/infrastructure/repositories/documentation_repository_impl.dart';
 import 'package:doc_viewer_app/features/documentation/infrastructure/datasources/filesystem_documentation_datasource.dart';
 import '../../infrastructure/services/annotation_service.dart';
