@@ -5,6 +5,64 @@ All notable changes to DocViewer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0 "Martinique"] - 2025-12-06
+
+### Added
+- **Visual Annotation Markers**: Annotation anchor points now display with visible 📌 emoji icons
+  - Emoji markers embedded directly in markdown links: `[📌](#annotation-marker-xxx)`
+  - Eliminates need for custom rendering - uses native markdown link rendering
+  - Icons appear inline at exact annotation positions
+  - Backwards compatible with old invisible marker format
+- **Custom Speech Bubble Tooltips**: Beautiful custom tooltips for annotation badges
+  - Speech bubble shape with triangular stem pointing to badge
+  - Background color matches badge color (yellow, red, blue, green, orange, purple)
+  - Rounded corners with soft shadow for depth
+  - White text with Inter font for readability
+  - 300ms hover delay, max 3 lines with ellipsis
+  - Positioned to the right of badges using Overlay system
+
+### Changed
+- **Improved Scroll-to-Annotation Accuracy**: Two-phase positioning for precise scrolling
+  - Phase 1: Scroll to exact marker position at viewport top
+  - Phase 2: Adjust back 80px to show context above
+  - Uses `Scrollable.ensureVisible()` with explicit alignment policy
+  - Eliminated manual offset calculations for better reliability
+- **Enhanced Anchor Text Uniqueness Algorithm**: More aggressive context expansion
+  - Tries expanding around ALL occurrences when duplicates exist
+  - Picks first occurrence that becomes unique with context
+  - Adds 2 words at a time after initial iterations for faster convergence
+  - Increased max expansions from 10 to 15 words per direction
+  - Supports up to 30 total words of context (15 before + 15 after)
+- **Badge Icon Style**: Changed from filled to outlined bookmark icons
+  - Gutter badges: `CupertinoIcons.bookmark` (outlined)
+  - Count badge: `CupertinoIcons.bookmark` (outlined)
+  - Cleaner, more refined appearance with better visual hierarchy
+- **Annotation Parser Optimization**: Simplified marker handling
+  - Strips both annotation and element markers before saving
+  - Preserves markers during display for functionality
+  - Clean markdown files without rendering artifacts
+
+### Fixed
+- **Parser Crash Eliminated**: Removed problematic element marker injection
+  - Element markers `[](#ln-X)` caused "BlockParser.parseLines is not advancing" error
+  - Reverted to anchor text search with aggressive uniqueness algorithm
+  - Files now save cleanly without element index markers
+- **Annotation Marker Visibility**: Fixed invisible markers issue
+  - Changed builder registration from 'html' to 'a' tag
+  - Markers now properly render with emoji icons
+  - GlobalKey attachment works correctly for scroll-to functionality
+
+### Technical
+- Created `_SpeechBubbleTooltip` stateful widget with Overlay positioning
+- Implemented `_SpeechBubblePainter` CustomPainter for bubble shape rendering
+- Enhanced `AnnotationParser.serialize()` to inject emoji-based markers
+- Updated `MarkdownElementIndexer` to recognize both marker formats
+- Simplified `AnnotationMarkerBuilder` to attach GlobalKeys without custom rendering
+- Modified uniqueness algorithm to try all occurrences iteratively
+- Added `_findAllOccurrences()` helper method for position tracking
+
+---
+
 ## [1.4.0 "Jamaica Rum"] - 2025-12-05
 
 ### Added

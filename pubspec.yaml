@@ -1,7 +1,7 @@
 name: doc_viewer_app
 description: Florence Documentation Viewer - A markdown documentation viewer with theme support
 publish_to: 'none'
-version: 1.4.0+0
+version: 1.5.0+0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
