@@ -10,6 +10,7 @@ import '../widgets/style_settings_dialog.dart';
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_bloc.dart';
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';
+import 'package:doc_viewer_app/features/git/presentation/widgets/clone_repository_dialog.dart';
 
 /// Main documentation viewer screen with animated header and layout
 class DocumentationScreen extends StatefulWidget {
@@ -77,6 +78,39 @@ class _DocumentationScreenState extends State<DocumentationScreen>
     context.read<DocumentationBloc>().add(RefreshFileTreeEvent());
   }
 
+  void _showCloneDialog() async {
+    AppLogger.info('Opening clone repository dialog', tag: 'DocumentationScreen');
+    final result = await showDialog<CloneRepositoryResult>(
+      context: context,
+      builder: (context) => const CloneRepositoryDialog(),
+    );
+
+    if (result != null) {
+      AppLogger.success(
+        'Clone repository initiated',
+        tag: 'DocumentationScreen',
+        data: 'URL: ${result.url}, Path: ${result.localPath}',
+      );
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cloning repository to ${result.localPath}...'),
+            backgroundColor: SeezTheme.primaryBrown,
+          ),
+        );
+      }
+
+      // TODO: Trigger actual clone operation with GitBloc when integrated
+      // context.read<GitBloc>().add(CloneRepositoryEvent(
+      //   url: result.url,
+      //   localPath: result.localPath,
+      //   credentials: result.credentials,
+      // ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,6 +122,7 @@ class _DocumentationScreenState extends State<DocumentationScreen>
         currentTheme: widget.currentTheme,
         onThemeChanged: widget.onThemeChanged,
         onStyleSettings: _showStyleSettings,
+        onCloneRepository: _showCloneDialog,
       ),
       body: Row(
         children: [
@@ -118,6 +153,7 @@ class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget
   final String currentTheme;
   final Function(String) onThemeChanged;
   final VoidCallback onStyleSettings;
+  final VoidCallback onCloneRepository;
 
   const DocumentationAppBar({
     super.key,
@@ -128,6 +164,7 @@ class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget
     required this.currentTheme,
     required this.onThemeChanged,
     required this.onStyleSettings,
+    required this.onCloneRepository,
   });
 
   @override
@@ -233,6 +270,18 @@ class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget
                   ),
                   tooltip: 'Refresh File Tree',
                   onPressed: onRefreshFileTree,
+                ),
+
+                const SizedBox(width: 8),
+
+                // Git clone button
+                IconButton(
+                  icon: Icon(
+                    CupertinoIcons.cloud_download,
+                    color: Colors.white.withValues(alpha: 0.95),
+                  ),
+                  tooltip: 'Clone Git Repository',
+                  onPressed: onCloneRepository,
                 ),
 
                 const SizedBox(width: 8),
