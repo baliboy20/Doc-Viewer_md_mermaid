@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
@@ -9,6 +8,7 @@ import 'core/theme/seez_theme.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/help_dialog.dart';
 import 'core/routing/app_router.dart';
+import 'core/services/macos_menu_service.dart';
 
 void main() {
   AppLogger.divider(label: 'APP START');
@@ -31,9 +31,6 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
       ValueNotifier(const MarkdownStylePreferences());
 
   final PreferencesService _prefsService = PreferencesService();
-  static const MethodChannel _menuChannel =
-      MethodChannel('com.florence.docs/menu');
-
   late final GoRouter _router;
 
   @override
@@ -42,6 +39,9 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
     AppLogger.info('FlorenceDocsApp.initState()', tag: 'Main');
 
     _loadPreferences();
+
+    // Initialize macOS menu service
+    MacOSMenuService.initialize();
     _setupMenuChannel();
 
     // Create router with state notifiers
@@ -70,18 +70,17 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
   }
 
   void _setupMenuChannel() {
-    _menuChannel.setMethodCallHandler((call) async {
-      if (call.method == 'showHelp') {
-        // Get current context from router
-        final context = _router.routerDelegate.navigatorKey.currentContext;
-        if (context != null) {
-          showDialog(
-            context: context,
-            builder: (context) => const HelpDialog(),
-          );
-        }
+    // Set up help menu callback
+    MacOSMenuService.onShowHelp = () {
+      // Get current context from router
+      final context = _router.routerDelegate.navigatorKey.currentContext;
+      if (context != null) {
+        showDialog(
+          context: context,
+          builder: (context) => const HelpDialog(),
+        );
       }
-    });
+    };
   }
 
   Future<void> _loadPreferences() async {

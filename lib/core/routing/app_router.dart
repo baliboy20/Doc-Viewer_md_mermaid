@@ -14,6 +14,12 @@ import 'package:doc_viewer_app/features/annotations/infrastructure/services/anno
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
+// Git Integration
+import 'package:doc_viewer_app/features/git/application/bloc/git_bloc.dart';
+import 'package:doc_viewer_app/features/git/application/bloc/git_event.dart';
+import 'package:doc_viewer_app/features/git/infrastructure/repositories/process_git_repository_impl.dart';
+import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';
+
 import 'route_paths.dart';
 
 /// Global router configuration for the application
@@ -124,20 +130,45 @@ class AppRouter {
               data: 'docsPath: $docsPath',
             );
 
-            return BlocProvider(
-              create: (_) {
-                AppLogger.info('Creating DocumentationBloc', tag: 'AppRouter');
-                return DocumentationBloc(
-                  repository: DocumentationRepositoryImpl(
-                    datasource: FilesystemDocumentationDatasource(
-                      docsRootPath: docsPath,
-                    ),
-                  ),
-                  annotationService: AnnotationService(
-                    docsRootPath: docsPath,
-                  ),
-                )..add(const LoadFileTreeEvent());
-              },
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (_) {
+                    AppLogger.info('Creating GitBloc', tag: 'AppRouter');
+                    final gitBloc = GitBloc(
+                      repository: ProcessGitRepositoryImpl(),
+                    );
+
+                    // Try to open the current docs folder as a Git repo
+                    gitBloc.add(OpenRepositoryEvent(docsPath));
+
+                    return gitBloc;
+                  },
+                ),
+                BlocProvider(
+                  create: (context) {
+                    AppLogger.info('Creating DocumentationBloc', tag: 'AppRouter');
+                    return DocumentationBloc(
+                      repository: DocumentationRepositoryImpl(
+                        datasource: FilesystemDocumentationDatasource(
+                          docsRootPath: docsPath,
+                        ),
+                      ),
+                      annotationService: AnnotationService(
+                        docsRootPath: docsPath,
+                      ),
+                      onAnnotationChanged: () {
+                        // Trigger Git status refresh when annotations change
+                        AppLogger.info(
+                          'Annotation changed, refreshing Git status',
+                          tag: 'AppRouter',
+                        );
+                        context.read<GitBloc>().add(const GetRepositoryStatusEvent());
+                      },
+                    )..add(const LoadFileTreeEvent());
+                  },
+                ),
+              ],
               child: DocumentationScreen(
                 onChangeFolder: () {
                   AppLogger.info('Change folder requested', tag: 'AppRouter');

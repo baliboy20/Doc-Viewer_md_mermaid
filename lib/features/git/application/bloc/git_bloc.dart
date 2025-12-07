@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import '../../domain/repositories/git_repository.dart';
 import 'git_event.dart';
 import 'git_state.dart';
@@ -16,6 +17,8 @@ class GitBloc extends Bloc<GitEvent, GitState> {
     on<GetRepositoryStatusEvent>(_onGetRepositoryStatus);
     on<CommitChangesEvent>(_onCommitChanges);
     on<GetCommitHistoryEvent>(_onGetCommitHistory);
+    on<PullEvent>(_onPull);
+    on<PushEvent>(_onPush);
   }
 
   /// Handle cloning a repository
@@ -57,21 +60,37 @@ class GitBloc extends Bloc<GitEvent, GitState> {
     OpenRepositoryEvent event,
     Emitter<GitState> emit,
   ) async {
+    AppLogger.info('Opening repository', tag: 'GitBloc', data: event.path);
     emit(const GitOperationInProgress('Opening repository'));
 
     try {
       await _repository.open(event.path);
+      AppLogger.success('Repository opened successfully', tag: 'GitBloc', data: event.path);
       emit(RepositoryOpened(event.path));
+
+      // Automatically get repository status after opening
+      try {
+        AppLogger.info('Fetching repository status', tag: 'GitBloc');
+        final status = await _repository.status();
+        AppLogger.success(
+          'Repository status loaded',
+          tag: 'GitBloc',
+          data: 'Branch: ${status.currentBranch}, Modified: ${status.modified.length}, Added: ${status.added.length}, Deleted: ${status.deleted.length}, Untracked: ${status.untracked.length}',
+        );
+        emit(RepositoryStatusLoaded(status));
+      } catch (statusError) {
+        // If status fails, still keep repo opened but log the error
+        // Don't emit error state as the repo is technically open
+        AppLogger.warning('Failed to get status but repo is open', tag: 'GitBloc', data: statusError.toString());
+      }
     } on GitException catch (e) {
-      emit(GitOperationError(
-        'Failed to open repository',
-        details: e.details,
-      ));
+      // If it's not a Git repository, just emit GitInitial instead of error
+      // This is normal - not all folders are Git repos
+      AppLogger.info('Not a Git repository', tag: 'GitBloc', data: '${event.path}\nError: ${e.message}');
+      emit(const GitInitial());
     } catch (e) {
-      emit(GitOperationError(
-        'Failed to open repository',
-        details: e.toString(),
-      ));
+      AppLogger.warning('Error opening repository', tag: 'GitBloc', data: '${event.path}\nError: ${e.toString()}');
+      emit(const GitInitial());
     }
   }
 
@@ -166,6 +185,60 @@ class GitBloc extends Bloc<GitEvent, GitState> {
     } catch (e) {
       emit(GitOperationError(
         'Failed to load commit history',
+        details: e.toString(),
+      ));
+    }
+  }
+
+  /// Handle pull from remote repository
+  Future<void> _onPull(
+    PullEvent event,
+    Emitter<GitState> emit,
+  ) async {
+    emit(const GitOperationInProgress('Pulling from remote repository'));
+
+    try {
+      await _repository.pull();
+      emit(const PullSuccess('Successfully pulled from remote repository'));
+
+      // Refresh status after pull
+      final status = await _repository.status();
+      emit(RepositoryStatusLoaded(status));
+    } on GitException catch (e) {
+      emit(GitOperationError(
+        'Failed to pull from remote repository',
+        details: e.details,
+      ));
+    } catch (e) {
+      emit(GitOperationError(
+        'Failed to pull from remote repository',
+        details: e.toString(),
+      ));
+    }
+  }
+
+  /// Handle push to remote repository
+  Future<void> _onPush(
+    PushEvent event,
+    Emitter<GitState> emit,
+  ) async {
+    emit(const GitOperationInProgress('Pushing to remote repository'));
+
+    try {
+      await _repository.push();
+      emit(const PushSuccess('Successfully pushed to remote repository'));
+
+      // Refresh status after push
+      final status = await _repository.status();
+      emit(RepositoryStatusLoaded(status));
+    } on GitException catch (e) {
+      emit(GitOperationError(
+        'Failed to push to remote repository',
+        details: e.details,
+      ));
+    } catch (e) {
+      emit(GitOperationError(
+        'Failed to push to remote repository',
         details: e.toString(),
       ));
     }

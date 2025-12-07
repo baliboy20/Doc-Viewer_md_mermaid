@@ -71,6 +71,26 @@ class CommitSuccess extends GitState {
   List<Object?> get props => [message];
 }
 
+/// State when pull is successful
+class PullSuccess extends GitState {
+  final String message;
+
+  const PullSuccess(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+/// State when push is successful
+class PushSuccess extends GitState {
+  final String message;
+
+  const PushSuccess(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
 /// State when commit history is loaded
 class CommitHistoryLoaded extends GitState {
   final List<GitCommit> commits;

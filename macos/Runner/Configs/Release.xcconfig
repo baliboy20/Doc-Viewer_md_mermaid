@@ -1,3 +1,8 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
 #include "AppInfo.xcconfig"
+
+// Ad-hoc code signing for local builds (no certificate required)
+CODE_SIGN_IDENTITY = -
+CODE_SIGN_STYLE = Manual
+DEVELOPMENT_TEAM =

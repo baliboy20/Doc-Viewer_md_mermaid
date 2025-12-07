@@ -64,12 +64,19 @@ echo ""
 
 # Build the macOS release binary
 echo -e "${GREEN}Building macOS release binary...${NC}"
-flutter build macos --release
+flutter build macos --release \
+    --build-name="$VERSION" \
+    --build-number="${VERSION%%.*}" \
+    --dart-define=FLUTTER_BUILD_MODE=release
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Flutter build failed${NC}"
     exit 1
 fi
+
+# Ad-hoc sign the app for local distribution (no certificate needed)
+echo -e "${GREEN}Applying ad-hoc code signature...${NC}"
+codesign --force --deep --sign - "$APP_BUNDLE"
 echo ""
 
 # Check if the app bundle exists

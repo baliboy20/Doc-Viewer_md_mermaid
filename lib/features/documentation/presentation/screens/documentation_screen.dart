@@ -11,6 +11,12 @@ import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_s
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_bloc.dart';
 import 'package:doc_viewer_app/features/documentation/application/bloc/documentation_event.dart';
 import 'package:doc_viewer_app/features/git/presentation/widgets/clone_repository_dialog.dart';
+import 'package:doc_viewer_app/features/git/presentation/widgets/git_sidebar_panel.dart';
+import 'package:doc_viewer_app/features/git/presentation/widgets/commit_changes_dialog.dart';
+import 'package:doc_viewer_app/features/git/application/bloc/git_bloc.dart';
+import 'package:doc_viewer_app/features/git/application/bloc/git_event.dart';
+import 'package:doc_viewer_app/features/git/application/bloc/git_state.dart';
+import 'package:doc_viewer_app/core/services/macos_menu_service.dart';
 
 /// Main documentation viewer screen with animated header and layout
 class DocumentationScreen extends StatefulWidget {
@@ -38,6 +44,7 @@ class DocumentationScreen extends StatefulWidget {
 class _DocumentationScreenState extends State<DocumentationScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  bool _showGitSidebar = false;
 
   @override
   void initState() {
@@ -53,12 +60,74 @@ class _DocumentationScreenState extends State<DocumentationScreen>
       duration: const Duration(seconds: 8),
       vsync: this,
     )..repeat(reverse: true);
+
+    // Set up macOS menu callbacks
+    _setupMacOSMenuCallbacks();
+  }
+
+  void _setupMacOSMenuCallbacks() {
+    AppLogger.info('Setting up macOS menu callbacks', tag: 'DocumentationScreen');
+
+    MacOSMenuService.onCloneRepository = () {
+      if (mounted) {
+        _showCloneDialog();
+      }
+    };
+
+    MacOSMenuService.onToggleGitPanel = () {
+      if (mounted) {
+        _toggleGitSidebar();
+      }
+    };
+
+    MacOSMenuService.onGitPull = () {
+      if (mounted) {
+        context.read<GitBloc>().add(const PullEvent());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pulling from remote repository...'),
+            backgroundColor: SeezTheme.primaryBrown,
+          ),
+        );
+      }
+    };
+
+    MacOSMenuService.onGitPush = () {
+      if (mounted) {
+        context.read<GitBloc>().add(const PushEvent());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pushing to remote repository...'),
+            backgroundColor: SeezTheme.primaryBrown,
+          ),
+        );
+      }
+    };
+
+    MacOSMenuService.onGitCommit = () {
+      if (mounted) {
+        _showCommitDialog();
+      }
+    };
+
+    MacOSMenuService.onRefreshGitStatus = () {
+      if (mounted) {
+        context.read<GitBloc>().add(const GetRepositoryStatusEvent());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Refreshing Git status...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    };
   }
 
   @override
   void dispose() {
     AppLogger.info('DocumentationScreen disposing', tag: 'DocumentationScreen');
     _animationController.dispose();
+    MacOSMenuService.dispose();
     super.dispose();
   }
 
@@ -78,6 +147,13 @@ class _DocumentationScreenState extends State<DocumentationScreen>
     context.read<DocumentationBloc>().add(RefreshFileTreeEvent());
   }
 
+  void _toggleGitSidebar() {
+    AppLogger.info('Toggling Git sidebar', tag: 'DocumentationScreen');
+    setState(() {
+      _showGitSidebar = !_showGitSidebar;
+    });
+  }
+
   void _showCloneDialog() async {
     AppLogger.info('Opening clone repository dialog', tag: 'DocumentationScreen');
     final result = await showDialog<CloneRepositoryResult>(
@@ -92,8 +168,15 @@ class _DocumentationScreenState extends State<DocumentationScreen>
         data: 'URL: ${result.url}, Path: ${result.localPath}',
       );
 
-      // Show success message
+      // Trigger Git clone operation
       if (mounted) {
+        context.read<GitBloc>().add(CloneRepositoryEvent(
+          url: result.url,
+          localPath: result.localPath,
+          credentials: result.credentials,
+        ));
+
+        // Show starting message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Cloning repository to ${result.localPath}...'),
@@ -101,44 +184,184 @@ class _DocumentationScreenState extends State<DocumentationScreen>
           ),
         );
       }
+    }
+  }
 
-      // TODO: Trigger actual clone operation with GitBloc when integrated
-      // context.read<GitBloc>().add(CloneRepositoryEvent(
-      //   url: result.url,
-      //   localPath: result.localPath,
-      //   credentials: result.credentials,
-      // ));
+  void _showCommitDialog() async {
+    AppLogger.info('Opening commit changes dialog', tag: 'DocumentationScreen');
+
+    // Get current Git status from the bloc
+    final gitState = context.read<GitBloc>().state;
+
+    if (gitState is! RepositoryStatusLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please wait for Git status to load'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final status = gitState.status;
+
+    if (!status.hasUncommittedChanges) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No changes to commit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => CommitChangesDialog(
+        modifiedFiles: status.modified,
+        addedFiles: status.added,
+        deletedFiles: status.deleted,
+      ),
+    );
+
+    if (result != null && mounted) {
+      final message = result['message'] as String;
+      final files = result['files'] as List<String>;
+
+      AppLogger.success(
+        'Commit initiated',
+        tag: 'DocumentationScreen',
+        data: 'Files: ${files.length}, Message: $message',
+      );
+
+      context.read<GitBloc>().add(CommitChangesEvent(
+        message: message,
+        files: files,
+      ));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Committing ${files.length} file(s)...'),
+          backgroundColor: SeezTheme.primaryBrown,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: DocumentationAppBar(
-        animationController: _animationController,
-        docsRootPath: widget.docsRootPath,
-        onChangeFolder: widget.onChangeFolder,
-        onRefreshFileTree: _refreshFileTree,
-        currentTheme: widget.currentTheme,
-        onThemeChanged: widget.onThemeChanged,
-        onStyleSettings: _showStyleSettings,
-        onCloneRepository: _showCloneDialog,
-      ),
-      body: Row(
-        children: [
-          // Sidebar Area
-          SidebarArea(
-            currentTheme: widget.currentTheme,
-          ),
+    return BlocListener<GitBloc, GitState>(
+      listener: (context, state) {
+        if (state is CloneSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Repository cloned successfully to ${state.localPath}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          AppLogger.success('Clone completed', tag: 'GitBloc', data: state.localPath);
+        } else if (state is CommitSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          AppLogger.success('Commit completed', tag: 'GitBloc', data: state.message);
 
-          // Content Area
-          Expanded(
-            child: ContentArea(
-              markdownStyles: widget.markdownStyles,
+          // Refresh status after commit
+          context.read<GitBloc>().add(const GetRepositoryStatusEvent());
+        } else if (state is PullSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          AppLogger.success('Pull completed', tag: 'GitBloc', data: state.message);
+        } else if (state is PushSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          AppLogger.success('Push completed', tag: 'GitBloc', data: state.message);
+        } else if (state is GitOperationError) {
+          final errorText = state.details != null
+              ? '${state.message}\n${state.details}'
+              : state.message;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorText),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 8),
+            ),
+          );
+          AppLogger.error(
+            'Git operation failed',
+            tag: 'GitBloc',
+            data: '${state.message}${state.details != null ? '\nDetails: ${state.details}' : ''}',
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: DocumentationAppBar(
+          animationController: _animationController,
+          docsRootPath: widget.docsRootPath,
+          onChangeFolder: widget.onChangeFolder,
+          onRefreshFileTree: _refreshFileTree,
+          currentTheme: widget.currentTheme,
+          onThemeChanged: widget.onThemeChanged,
+          onStyleSettings: _showStyleSettings,
+          onCloneRepository: _showCloneDialog,
+          showGitSidebar: _showGitSidebar,
+          onToggleGitSidebar: _toggleGitSidebar,
+        ),
+        body: Row(
+          children: [
+            // Sidebar Area
+            SidebarArea(
               currentTheme: widget.currentTheme,
             ),
-          ),
-        ],
+
+            // Content Area
+            Expanded(
+              child: ContentArea(
+                markdownStyles: widget.markdownStyles,
+                currentTheme: widget.currentTheme,
+              ),
+            ),
+
+            // Git Sidebar Panel
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              width: _showGitSidebar ? 320 : 0,
+              child: _showGitSidebar
+                  ? Container(
+                      decoration: BoxDecoration(
+                        color: SeezTheme.parchmentBackground,
+                        border: Border(
+                          left: BorderSide(
+                            color: SeezTheme.mediumBrownBorder,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: GitSidebarPanel(
+                        currentTheme: widget.currentTheme,
+                      ),
+                    )
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -154,6 +377,8 @@ class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget
   final Function(String) onThemeChanged;
   final VoidCallback onStyleSettings;
   final VoidCallback onCloneRepository;
+  final bool showGitSidebar;
+  final VoidCallback onToggleGitSidebar;
 
   const DocumentationAppBar({
     super.key,
@@ -165,6 +390,8 @@ class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget
     required this.onThemeChanged,
     required this.onStyleSettings,
     required this.onCloneRepository,
+    required this.showGitSidebar,
+    required this.onToggleGitSidebar,
   });
 
   @override
@@ -282,6 +509,18 @@ class DocumentationAppBar extends StatelessWidget implements PreferredSizeWidget
                   ),
                   tooltip: 'Clone Git Repository',
                   onPressed: onCloneRepository,
+                ),
+
+                const SizedBox(width: 8),
+
+                // Git sidebar toggle button
+                IconButton(
+                  icon: Icon(
+                    showGitSidebar ? CupertinoIcons.sidebar_right : CupertinoIcons.sidebar_left,
+                    color: Colors.white.withValues(alpha: 0.95),
+                  ),
+                  tooltip: showGitSidebar ? 'Hide Git Panel' : 'Show Git Panel',
+                  onPressed: onToggleGitSidebar,
                 ),
 
                 const SizedBox(width: 8),

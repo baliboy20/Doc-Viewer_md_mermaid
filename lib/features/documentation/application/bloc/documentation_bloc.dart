@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:doc_viewer_app/features/annotations/domain/entities/annotation.dart';
 import 'package:doc_viewer_app/features/documentation/domain/repositories/documentation_repository.dart';
@@ -10,10 +11,12 @@ import 'documentation_state.dart';
 class DocumentationBloc extends Bloc<DocumentationEvent, DocumentationState> {
   final DocumentationRepository repository;
   final AnnotationService? annotationService;
+  final VoidCallback? onAnnotationChanged;
 
   DocumentationBloc({
     required this.repository,
     this.annotationService,
+    this.onAnnotationChanged,
   }) : super(const DocumentationInitial()) {
     on<LoadFileTreeEvent>(_onLoadFileTree);
     on<SelectFileEvent>(_onSelectFile);
@@ -259,6 +262,9 @@ class DocumentationBloc extends Bloc<DocumentationEvent, DocumentationState> {
 
       // Reload file content (which will also reload annotations)
       add(SelectFileEvent(filePath: event.filePath));
+
+      // Trigger Git status refresh
+      onAnnotationChanged?.call();
     } catch (e) {
       AppLogger.error(
         'Failed to add annotation',
@@ -310,6 +316,9 @@ class DocumentationBloc extends Bloc<DocumentationEvent, DocumentationState> {
           'Annotation updated',
           tag: 'DocumentationBloc',
         );
+
+        // Trigger Git status refresh
+        onAnnotationChanged?.call();
       } catch (e) {
         AppLogger.error(
           'Failed to update annotation',
@@ -347,6 +356,9 @@ class DocumentationBloc extends Bloc<DocumentationEvent, DocumentationState> {
         'Annotation deleted',
         tag: 'DocumentationBloc',
       );
+
+      // Trigger Git status refresh
+      onAnnotationChanged?.call();
     } catch (e) {
       AppLogger.error(
         'Failed to delete annotation',

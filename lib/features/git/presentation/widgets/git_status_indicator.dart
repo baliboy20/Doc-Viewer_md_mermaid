@@ -41,7 +41,7 @@ class GitStatusIndicator extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                CupertinoIcons.git_branch,
+                CupertinoIcons.arrow_branch,
                 size: 14,
                 color: Colors.white.withValues(alpha: 0.9),
               ),

@@ -7,7 +7,9 @@ import 'package:doc_viewer_app/features/git/application/bloc/git_state.dart';
 import 'package:doc_viewer_app/features/git/application/bloc/git_event.dart';
 import 'package:doc_viewer_app/features/git/domain/entities/git_commit.dart';
 import 'package:doc_viewer_app/features/git/domain/entities/git_status.dart';
+import 'package:doc_viewer_app/features/git/presentation/widgets/commit_changes_dialog.dart';
 import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import 'package:intl/intl.dart';
 
 /// Git sidebar panel showing repository status, commits, and actions
@@ -50,7 +52,7 @@ class GitSidebarPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('Git Repository', CupertinoIcons.git_branch),
+          _buildSectionTitle('Git Repository', CupertinoIcons.arrow_branch),
           const SizedBox(height: 16),
           Text(
             'This folder is not a Git repository',
@@ -126,14 +128,14 @@ class GitSidebarPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('Git Repository', CupertinoIcons.git_branch),
+          _buildSectionTitle('Git Repository', CupertinoIcons.arrow_branch),
           const SizedBox(height: 12),
 
           // Current branch
           _buildInfoRow(
             'Branch',
             status.currentBranch ?? 'main',
-            CupertinoIcons.git_branch,
+            CupertinoIcons.arrow_branch,
           ),
 
           const SizedBox(height: 16),
@@ -154,7 +156,7 @@ class GitSidebarPanel extends StatelessWidget {
             if (untrackedFiles > 0)
               _buildFileStatusRow('Untracked', untrackedFiles, Colors.grey),
             const SizedBox(height: 16),
-            _buildActionButtons(context),
+            _buildActionButtons(context, status),
           ] else
             Text(
               'No uncommitted changes',
@@ -358,15 +360,13 @@ class GitSidebarPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, GitStatus status) {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Show commit dialog
-            },
+            onPressed: () => _showCommitDialog(context, status),
             icon: const Icon(CupertinoIcons.checkmark_circle, size: 16),
             label: const Text('Commit Changes'),
             style: ElevatedButton.styleFrom(
@@ -380,9 +380,7 @@ class GitSidebarPanel extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () {
-              // TODO: Discard changes
-            },
+            onPressed: () => _showDiscardDialog(context),
             icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
             label: const Text('Discard Changes'),
             style: OutlinedButton.styleFrom(
@@ -394,6 +392,78 @@ class GitSidebarPanel extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void _showCommitDialog(BuildContext context, GitStatus status) async {
+    AppLogger.info('Opening commit dialog from sidebar', tag: 'GitSidebarPanel');
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => CommitChangesDialog(
+        modifiedFiles: status.modified,
+        addedFiles: status.added,
+        deletedFiles: status.deleted,
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      final message = result['message'] as String;
+      final files = result['files'] as List<String>;
+
+      AppLogger.success(
+        'Commit initiated from sidebar',
+        tag: 'GitSidebarPanel',
+        data: 'Files: ${files.length}, Message: $message',
+      );
+
+      context.read<GitBloc>().add(CommitChangesEvent(
+        message: message,
+        files: files,
+      ));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Committing ${files.length} file(s)...'),
+          backgroundColor: SeezTheme.primaryBrown,
+        ),
+      );
+    }
+  }
+
+  void _showDiscardDialog(BuildContext context) async {
+    AppLogger.info('Showing discard changes confirmation', tag: 'GitSidebarPanel');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard Changes'),
+        content: const Text(
+          'Are you sure you want to discard all uncommitted changes? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      AppLogger.warning('User confirmed discard changes', tag: 'GitSidebarPanel');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Discard changes not yet implemented'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      // TODO: Implement git reset --hard or similar
+    }
   }
 
   Widget _buildQuickActions(BuildContext context) {

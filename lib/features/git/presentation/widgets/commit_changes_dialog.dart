@@ -63,7 +63,7 @@ class _CommitChangesDialogState extends State<CommitChangesDialog> {
               Row(
                 children: [
                   const Icon(
-                    CupertinoIcons.git_commit,
+                    CupertinoIcons.checkmark_seal,
                     color: SeezTheme.primaryBrown,
                     size: 24,
                   ),
@@ -101,8 +101,8 @@ class _CommitChangesDialogState extends State<CommitChangesDialog> {
                   if (value == null || value.trim().isEmpty) {
                     return 'Commit message cannot be empty';
                   }
-                  if (value.trim().length < 3) {
-                    return 'Commit message must be at least 3 characters';
+                  if (value.trim().length < 10) {
+                    return 'Commit message must be at least 10 characters';
                   }
                   return null;
                 },
@@ -138,7 +138,6 @@ class _CommitChangesDialogState extends State<CommitChangesDialog> {
                       final isSelected = _selectedFiles.contains(file);
                       final isModified = widget.modifiedFiles.contains(file);
                       final isAdded = widget.addedFiles.contains(file);
-                      final isDeleted = widget.deletedFiles.contains(file);
 
                       Color statusColor;
                       String statusLabel;

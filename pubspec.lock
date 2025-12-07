@@ -234,22 +234,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  git2dart:
-    dependency: "direct main"
-    description:
-      name: git2dart
-      sha256: ed158fa233a17bef2b06e0e8d0082951411475f05e85244e61926829480ee190
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.0"
-  git2dart_binaries:
-    dependency: transitive
-    description:
-      name: git2dart_binaries
-      sha256: "1184ebe1e357142e0656e6cb0d3b58a7b3bf6b84d40eb34afa9734542a6c2849"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.10.3"
   go_router:
     dependency: "direct main"
     description:
@@ -495,14 +479,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.5+1"
-  pub_semver:
-    dependency: transitive
-    description:
-      name: pub_semver
-      sha256: "5bfcf68ca79ef689f8990d1160781b4bad40a3bd5e5218ad4076ddb7f4081585"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.0"
   shared_preferences:
     dependency: "direct main"
     description:

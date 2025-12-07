@@ -72,3 +72,13 @@ class GetCommitHistoryEvent extends GitEvent {
   @override
   List<Object?> get props => [limit, branch];
 }
+
+/// Event to pull from remote repository
+class PullEvent extends GitEvent {
+  const PullEvent();
+}
+
+/// Event to push to remote repository
+class PushEvent extends GitEvent {
+  const PushEvent();
+}
