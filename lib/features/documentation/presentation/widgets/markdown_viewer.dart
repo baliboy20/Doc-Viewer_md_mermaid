@@ -7,7 +7,6 @@ import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'package:doc_viewer_app/core/utils/app_logger.dart';
-import 'package:doc_viewer_app/features/documentation/infrastructure/services/markdown_element_indexer.dart';
 import 'package:doc_viewer_app/core/theme/seez_theme.dart';
 import 'package:doc_viewer_app/core/theme/app_theme.dart';
 import 'mermaid_diagram.dart';
@@ -36,10 +35,8 @@ class MarkdownViewer extends StatefulWidget {
 }
 
 class _MarkdownViewerState extends State<MarkdownViewer> {
-  final TextSelection _textSelection = const TextSelection.collapsed(offset: 0);
   String _selectedText = '';
   int? _selectedElementIndex; // Track which element was selected
-  final MarkdownElementIndexer _indexer = MarkdownElementIndexer();
 
   Color get _textColor {
     return widget.currentTheme == 'seez'

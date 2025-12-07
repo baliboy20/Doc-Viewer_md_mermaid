@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:doc_viewer_app/core/theme/seez_theme.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 import '../widgets/sidebar_area.dart';
 import '../widgets/content_area.dart';
 import '../widgets/style_settings_dialog.dart';
@@ -40,6 +41,13 @@ class _DocumentationScreenState extends State<DocumentationScreen>
   @override
   void initState() {
     super.initState();
+    AppLogger.divider(label: 'DOCUMENTATION SCREEN INIT');
+    AppLogger.success(
+      'DocumentationScreen initialized',
+      tag: 'DocumentationScreen',
+      data: 'docsRootPath: ${widget.docsRootPath}',
+    );
+
     _animationController = AnimationController(
       duration: const Duration(seconds: 8),
       vsync: this,
@@ -48,11 +56,13 @@ class _DocumentationScreenState extends State<DocumentationScreen>
 
   @override
   void dispose() {
+    AppLogger.info('DocumentationScreen disposing', tag: 'DocumentationScreen');
     _animationController.dispose();
     super.dispose();
   }
 
   void _showStyleSettings() {
+    AppLogger.info('Opening style settings dialog', tag: 'DocumentationScreen');
     showDialog(
       context: context,
       builder: (context) => StyleSettingsDialog(
@@ -63,6 +73,7 @@ class _DocumentationScreenState extends State<DocumentationScreen>
   }
 
   void _refreshFileTree() {
+    AppLogger.info('Refreshing file tree', tag: 'DocumentationScreen');
     context.read<DocumentationBloc>().add(RefreshFileTreeEvent());
   }
 

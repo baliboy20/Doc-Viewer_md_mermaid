@@ -211,34 +211,4 @@ class MarkdownElementIndexer {
 
     return result.toString();
   }
-
-  /// Checks if a line starts a block element
-  bool _isBlockElementStart(String line) {
-    if (line.isEmpty) return false;
-
-    return line.startsWith('#') ||           // Heading
-           line.startsWith('- ') ||          // List item
-           line.startsWith('* ') ||          // List item
-           line.startsWith('+ ') ||          // List item
-           line.startsWith('> ') ||          // Blockquote
-           line.startsWith('```') ||         // Code block
-           line.startsWith('1. ') ||         // Ordered list
-           _isParagraphStart(line);          // Paragraph
-  }
-
-  /// Checks if line starts a paragraph (not empty, not special syntax)
-  bool _isParagraphStart(String line) {
-    if (line.isEmpty) return false;
-
-    // Not a special markdown line, so it's a paragraph
-    return !line.startsWith('#') &&
-           !line.startsWith('-') &&
-           !line.startsWith('*') &&
-           !line.startsWith('+') &&
-           !line.startsWith('>') &&
-           !line.startsWith('`') &&
-           !line.startsWith('[') &&
-           !line.startsWith('!') &&
-           !RegExp(r'^\d+\.').hasMatch(line);
-  }
 }

@@ -12,6 +12,7 @@ import 'package:doc_viewer_app/features/documentation/infrastructure/repositorie
 import 'package:doc_viewer_app/features/documentation/infrastructure/datasources/filesystem_documentation_datasource.dart';
 import 'package:doc_viewer_app/features/annotations/infrastructure/services/annotation_service.dart';
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
+import 'package:doc_viewer_app/core/utils/app_logger.dart';
 
 import 'route_paths.dart';
 
@@ -31,25 +32,43 @@ class AppRouter {
     required ValueNotifier<String> currentTheme,
     required ValueNotifier<MarkdownStylePreferences> markdownStyles,
   }) {
+    AppLogger.info('Creating GoRouter', tag: 'AppRouter');
+
     return GoRouter(
       initialLocation: RoutePaths.splash,
       debugLogDiagnostics: true,
+
+      // CRITICAL: Listen to selectedDocsPath to trigger redirect re-evaluation
+      refreshListenable: selectedDocsPath,
 
       // Redirect logic based on state
       redirect: (context, state) {
         final hasDocsPath = selectedDocsPath.value != null;
         final isOnSplash = state.matchedLocation == RoutePaths.splash;
 
+        AppLogger.info(
+          'Router redirect evaluation',
+          tag: 'AppRouter',
+          data: 'hasDocsPath: $hasDocsPath, isOnSplash: $isOnSplash, currentLocation: ${state.matchedLocation}',
+        );
+
         // If we have a docs path and we're on splash, go to documentation
         if (hasDocsPath && isOnSplash) {
+          AppLogger.success(
+            'Redirecting from splash to documentation',
+            tag: 'AppRouter',
+            data: selectedDocsPath.value,
+          );
           return RoutePaths.documentation;
         }
 
         // If we don't have a docs path and we're not on splash, go to splash
         if (!hasDocsPath && !isOnSplash) {
+          AppLogger.warning('No docs path, redirecting to splash', tag: 'AppRouter');
           return RoutePaths.splash;
         }
 
+        AppLogger.debug('No redirect needed', tag: 'AppRouter');
         return null; // No redirect needed
       },
 
@@ -58,11 +77,24 @@ class AppRouter {
         GoRoute(
           path: RoutePaths.splash,
           name: RouteNames.splash,
-          builder: (context, state) => SplashScreen(
-            onDirectorySelected: (path) {
-              selectedDocsPath.value = path;
-            },
-          ),
+          builder: (context, state) {
+            AppLogger.info('Building SplashScreen route', tag: 'AppRouter');
+            return SplashScreen(
+              onDirectorySelected: (path) {
+                AppLogger.success(
+                  'Directory selected callback triggered',
+                  tag: 'AppRouter',
+                  data: path,
+                );
+                selectedDocsPath.value = path;
+                AppLogger.info(
+                  'selectedDocsPath.value updated',
+                  tag: 'AppRouter',
+                  data: 'New value: ${selectedDocsPath.value}',
+                );
+              },
+            );
+          },
         ),
 
         // Documentation Viewer (with nested routes for dialogs)
@@ -70,10 +102,15 @@ class AppRouter {
           path: RoutePaths.documentation,
           name: RouteNames.documentation,
           builder: (context, state) {
+            AppLogger.info('Building DocumentationScreen route', tag: 'AppRouter');
             final docsPath = selectedDocsPath.value;
 
             // Safety check (should be redirected by redirect logic)
             if (docsPath == null) {
+              AppLogger.warning(
+                'DocumentationScreen builder called with null docsPath',
+                tag: 'AppRouter',
+              );
               return SplashScreen(
                 onDirectorySelected: (path) {
                   selectedDocsPath.value = path;
@@ -81,19 +118,29 @@ class AppRouter {
               );
             }
 
+            AppLogger.success(
+              'Creating DocumentationScreen',
+              tag: 'AppRouter',
+              data: 'docsPath: $docsPath',
+            );
+
             return BlocProvider(
-              create: (_) => DocumentationBloc(
-                repository: DocumentationRepositoryImpl(
-                  datasource: FilesystemDocumentationDatasource(
+              create: (_) {
+                AppLogger.info('Creating DocumentationBloc', tag: 'AppRouter');
+                return DocumentationBloc(
+                  repository: DocumentationRepositoryImpl(
+                    datasource: FilesystemDocumentationDatasource(
+                      docsRootPath: docsPath,
+                    ),
+                  ),
+                  annotationService: AnnotationService(
                     docsRootPath: docsPath,
                   ),
-                ),
-                annotationService: AnnotationService(
-                  docsRootPath: docsPath,
-                ),
-              )..add(const LoadFileTreeEvent()),
+                )..add(const LoadFileTreeEvent());
+              },
               child: DocumentationScreen(
                 onChangeFolder: () {
+                  AppLogger.info('Change folder requested', tag: 'AppRouter');
                   selectedDocsPath.value = null;
                 },
                 currentTheme: currentTheme.value,

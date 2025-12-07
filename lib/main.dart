@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import 'package:doc_viewer_app/features/documentation/domain/entities/markdown_style_preferences.dart';
 import 'core/utils/preferences_service.dart';
+import 'core/utils/app_logger.dart';
 import 'core/theme/seez_theme.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/help_dialog.dart';
 import 'core/routing/app_router.dart';
 
 void main() {
+  AppLogger.divider(label: 'APP START');
+  AppLogger.info('Florence Documentation Viewer starting', tag: 'Main');
   runApp(const FlorenceDocsApp());
 }
 
@@ -36,6 +39,8 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
   @override
   void initState() {
     super.initState();
+    AppLogger.info('FlorenceDocsApp.initState()', tag: 'Main');
+
     _loadPreferences();
     _setupMenuChannel();
 
@@ -45,6 +50,15 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
       currentTheme: _currentTheme,
       markdownStyles: _markdownStyles,
     );
+
+    // Add listener to track docs path changes
+    _selectedDocsPath.addListener(() {
+      AppLogger.info(
+        'selectedDocsPath changed',
+        tag: 'Main',
+        data: _selectedDocsPath.value,
+      );
+    });
   }
 
   @override
@@ -71,8 +85,16 @@ class _FlorenceDocsAppState extends State<FlorenceDocsApp> {
   }
 
   Future<void> _loadPreferences() async {
+    AppLogger.info('Loading user preferences', tag: 'Main');
+
     final theme = await _prefsService.getTheme();
     final styles = await _prefsService.getMarkdownStyles();
+
+    AppLogger.success(
+      'Preferences loaded',
+      tag: 'Main',
+      data: 'theme: $theme',
+    );
 
     _currentTheme.value = theme;
     _markdownStyles.value = styles;

@@ -1,5 +1,4 @@
 import 'package:doc_viewer_app/features/annotations/domain/entities/annotation.dart';
-import 'package:doc_viewer_app/features/documentation/infrastructure/services/markdown_element_indexer.dart';
 
 /// Parses and serializes annotations from/to markdown files
 class AnnotationParser {
@@ -7,8 +6,6 @@ class AnnotationParser {
       '---\n\n<!-- ANNOTATIONS_SECTION_START -->\n\n## 📌 Annotations\n';
   static const String sectionEnd = '<!-- ANNOTATIONS_SECTION_END -->';
   static const String noteSeparator = '---\n';
-
-  final MarkdownElementIndexer _indexer = MarkdownElementIndexer();
 
   /// Parses a markdown file and extracts content + annotations
   ParsedDocument parse(String fileContent, String filePath) {
