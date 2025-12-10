@@ -44,8 +44,13 @@ class AppRouter {
       initialLocation: RoutePaths.splash,
       debugLogDiagnostics: true,
 
-      // CRITICAL: Listen to selectedDocsPath to trigger redirect re-evaluation
-      refreshListenable: selectedDocsPath,
+      // CRITICAL: Listen to state notifiers to trigger route rebuilds
+      // Router rebuilds when docs path, theme, or styles change
+      refreshListenable: Listenable.merge([
+        selectedDocsPath,
+        currentTheme,
+        markdownStyles,
+      ]),
 
       // Redirect logic based on state
       redirect: (context, state) {
@@ -169,20 +174,30 @@ class AppRouter {
                   },
                 ),
               ],
-              child: DocumentationScreen(
-                onChangeFolder: () {
-                  AppLogger.info('Change folder requested', tag: 'AppRouter');
-                  selectedDocsPath.value = null;
+              child: ValueListenableBuilder<String>(
+                valueListenable: currentTheme,
+                builder: (context, theme, _) {
+                  return ValueListenableBuilder<MarkdownStylePreferences>(
+                    valueListenable: markdownStyles,
+                    builder: (context, styles, _) {
+                      return DocumentationScreen(
+                        onChangeFolder: () {
+                          AppLogger.info('Change folder requested', tag: 'AppRouter');
+                          selectedDocsPath.value = null;
+                        },
+                        currentTheme: theme,
+                        onThemeChanged: (newTheme) {
+                          currentTheme.value = newTheme;
+                        },
+                        markdownStyles: styles,
+                        onStylesChanged: (newStyles) {
+                          markdownStyles.value = newStyles;
+                        },
+                        docsRootPath: docsPath,
+                      );
+                    },
+                  );
                 },
-                currentTheme: currentTheme.value,
-                onThemeChanged: (theme) {
-                  currentTheme.value = theme;
-                },
-                markdownStyles: markdownStyles.value,
-                onStylesChanged: (styles) {
-                  markdownStyles.value = styles;
-                },
-                docsRootPath: docsPath,
               ),
             );
           },

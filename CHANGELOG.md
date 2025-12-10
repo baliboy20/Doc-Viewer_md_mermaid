@@ -5,6 +5,51 @@ All notable changes to DocViewer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-12-10
+
+### Fixed
+- **Theme Switcher Reactivity**: Theme changes now apply immediately without requiring view navigation
+  - Wrapped DocumentationScreen with ValueListenableBuilder for reactive theme/style updates
+  - Added theme and markdown style notifiers to router's refreshListenable
+  - Sidebar and document content now update instantly when theme is changed
+
+## [2.0.0 "Oman"] - 2025-12-07
+
+### Added
+- **Discard Changes Functionality**: Full implementation for discarding uncommitted changes
+  - New `discardChanges()` method in GitRepository interface
+  - Process-based implementation using `git restore .` and `git clean -fd`
+  - Added `DiscardChangesEvent` and `DiscardSuccess` state to GitBloc
+  - Updated Git sidebar panel to trigger discard operation
+  - Confirmation dialog to prevent accidental data loss
+- **Automatic Git Status Refresh**: Git panel now automatically updates after annotation operations
+  - Added `onAnnotationChanged` callback to DocumentationBloc
+  - Callback triggers `GetRepositoryStatusEvent` on GitBloc
+  - Status refreshes immediately after add/update/delete annotation operations
+  - No manual refresh button click required
+
+### Changed
+- **Code Signing Configuration**: Updated for local DMG builds without certificates
+  - Modified `Release.entitlements` to disable app sandboxing and remove keychain requirements
+  - Added ad-hoc signing configuration to `Release.xcconfig` (CODE_SIGN_IDENTITY = -, CODE_SIGN_STYLE = Manual)
+  - Updated `package_dmg.sh` to include explicit ad-hoc signing step
+  - DMG packages can now be created for local distribution without developer certificates
+
+### Fixed
+- **Git Commit Message Validation**: Resolved mismatch between UI and repository requirements
+  - Updated commit dialog to require minimum 10 characters (was 3)
+  - Now matches Git repository validation requirement
+  - Prevents commit failures due to validation discrepancy
+- **BLoC Provider Ordering**: Ensured GitBloc is created before DocumentationBloc
+  - Allows DocumentationBloc callback to access GitBloc via BuildContext
+  - Fixes potential null reference issues during annotation operations
+
+### Technical Implementation
+- Added `VoidCallback` import to DocumentationBloc for callback support
+- Implemented two-step discard process: restore tracked files, then clean untracked files
+- Enhanced error handling with AppLogger integration in discard operations
+- Updated Git sidebar to show operation-in-progress feedback
+
 ## [1.6.0 "Nassau"] - 2025-12-06
 
 ### Major Architectural Refactoring - Phase 1
